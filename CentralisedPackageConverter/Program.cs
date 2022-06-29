@@ -1,16 +1,19 @@
 ﻿using CentralisedPackageConverter;
+using CommandLine;
 
-var folder = args.FirstOrDefault();
-
-if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+try
 {
+    Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(o =>
+    {
+        var converter = new PackageConverter();
 
-    var converter = new PackageConverter();
+        converter.ProcessConversion(o.RootDirectory, o.Revert, o.DryRun);
 
-    converter.ProcessConversion(folder);
-
-    Console.WriteLine("Complete.");
+        Console.WriteLine("Complete.");
+    });
 }
-else
-    Console.WriteLine("Usage: CentralisedPackageConverter foldername");
+catch (Exception ex)
+{
+    Console.WriteLine($"Startup exception: {ex}");
+}
 

@@ -1,33 +1,106 @@
 ﻿using System;
 using System.IO;
 using System.Xml.Linq;
-using Microsoft.Build.Evaluation;
 
 namespace CentralisedPackageConverter;
 
 public class PackageConverter
 {
 	private IDictionary<string, string> allReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private const string s_DirPackageProps = "Directory.Packages.props";
 
-	public void ProcessConversion( string solutionFolder )
+    public void ProcessConversion( string solutionFolder, bool revert, bool dryRun )
 	{
+        var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
+
+        if (dryRun)
+            Console.WriteLine("Dry run enabled - no changes will be made on disk.");
+
 		var rootDir = new DirectoryInfo(solutionFolder);
 
-		var projects = rootDir.GetFiles( "*.*", SearchOption.AllDirectories)
-						      .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
-                              .OrderBy( x => x.Name );
+        // Find all the csproj files to process
+        var projects = rootDir.GetFiles("*.*", SearchOption.AllDirectories)
+                              .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                              .OrderBy(x => x.Name)
+                              .ToList();
 
-		foreach( var project in projects )
-        {
-			ConvertProject( project );
-        }
+        // If we're reverting, read the references from the central file.
+        if (revert)
+            ReadDirectoryPackagePropsFile(packageConfigPath);
 
-        if (allReferences.Any())
+        if( revert )
         {
-            WriteDirectoryPackagesConfig(solutionFolder);
+            projects.ForEach( proj => RevertProject(proj, dryRun));
+
+            if (!dryRun)
+            {
+                Console.WriteLine($"Deleting {packageConfigPath}...");
+                //File.Delete(packageConfigPath);
+            }
         }
         else
-            Console.WriteLine("No references found...");
+        {
+            projects.ForEach(proj => ConvertProject(proj, dryRun));
+
+            if (allReferences.Any())
+            {
+                WriteDirectoryPackagesConfig(packageConfigPath, dryRun);
+            }
+            else
+                Console.WriteLine("No versioned references found in csproj files!");
+        }
+    }
+
+    /// <summary>
+    /// Revert a project to non-centralised package management
+    /// by adding the versions back into the csproj file.
+    /// </summary>
+    /// <param name="project"></param>
+    /// <param name="dryRun"></param>
+    private void RevertProject(FileInfo project, bool dryRun)
+    {
+        var xml = XDocument.Load(project.FullName);
+
+        var refs = xml.Descendants("PackageReference");
+
+        bool needToWriteChanges = false;
+
+        foreach (var reference in refs)
+        {
+            var package = GetAttributeValue(reference, "Include", false);
+
+            if( allReferences.TryGetValue( package, out var version ))
+            {
+                reference.SetAttributeValue("Version", version);
+                needToWriteChanges = true;
+            }
+            else
+                Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
+        }
+
+        if( ! dryRun && needToWriteChanges)
+            xml.Save(project.FullName);
+    }
+
+    /// <summary>
+    /// Read the list of references and versions from the Directory.Package.props file.
+    /// </summary>
+    /// <param name="packageConfigPath"></param>
+    private void ReadDirectoryPackagePropsFile(string packageConfigPath)
+    {
+        var xml = XDocument.Load(packageConfigPath);
+
+        var refs = xml.Descendants("PackageVersion");
+
+        foreach (var reference in refs)
+        {
+            var package = GetAttributeValue(reference, "Include", false);
+            var version = GetAttributeValue(reference, "Version", false);
+
+            allReferences[package] = version;
+        }
+
+        Console.WriteLine($"Read {allReferences.Count} references from {packageConfigPath}");
     }
 
     /// <summary>
@@ -35,7 +108,7 @@ public class PackageConverter
     /// TODO: Would be good to read the existing file and merge if appropriate.
     /// </summary>
     /// <param name="solutionFolder"></param>
-	private void WriteDirectoryPackagesConfig(string solutionFolder)
+    private void WriteDirectoryPackagesConfig(string packageConfigPath, bool dryRun)
     {
         var lines = new List<string>();
 
@@ -53,13 +126,22 @@ public class PackageConverter
         lines.Add("  </ItemGroup>");
         lines.Add("</Project>");
 
-        Console.WriteLine($"Writing {allReferences.Count} refs to Directory.Packages.props to {solutionFolder}...");
+        Console.WriteLine($"Writing {allReferences.Count} refs to {s_DirPackageProps} to {packageConfigPath}...");
 
-        var packageConfig = Path.Combine(solutionFolder, "Directory.Packages.props");
-
-        File.WriteAllLines(packageConfig, lines);
+        if( dryRun )
+            lines.ForEach(x => Console.WriteLine(x));
+        else
+            File.WriteAllLines(packageConfigPath, lines);
     }
 
+    /// <summary>
+    /// Safely get an attribute value from an XML Element, optionally
+    /// deleting it after the value has been retrieved.
+    /// </summary>
+    /// <param name="elem"></param>
+    /// <param name="name"></param>
+    /// <param name="remove"></param>
+    /// <returns></returns>
     private string? GetAttributeValue( XElement elem, string name, bool remove )
     {
 		var attr = elem.Attributes(name);
@@ -75,7 +157,12 @@ public class PackageConverter
         return null;
     }
 
-	private void ConvertProject( FileInfo csprojFile )
+    /// <summary>
+    /// Converts a csproj to Centrally managed packaging.
+    /// </summary>
+    /// <param name="csprojFile"></param>
+    /// <param name="dryRun"></param>
+	private void ConvertProject( FileInfo csprojFile, bool dryRun)
     {
         Console.WriteLine($"Processing references for {csprojFile.FullName}...");
 
@@ -83,7 +170,7 @@ public class PackageConverter
 
 		var refs = xml.Descendants("PackageReference");
 
-		bool rewriteCsproj = false;
+		bool needToWriteChanges = false;
 
 		foreach( var reference in refs )
         {
@@ -95,7 +182,7 @@ public class PackageConverter
 
 			if (!string.IsNullOrEmpty(version))
 			{
-				rewriteCsproj = true;
+                needToWriteChanges = true;
 
                 if (allReferences.TryGetValue(package, out var existingVer))
 				{
@@ -109,7 +196,7 @@ public class PackageConverter
             }
         }
 
-		if( rewriteCsproj )
+		if( needToWriteChanges && ! dryRun )
 			xml.Save(csprojFile.FullName);
     }
 }
