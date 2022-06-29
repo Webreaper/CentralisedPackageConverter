@@ -17,14 +17,24 @@ public class PackageConverter
 						      .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
                               .OrderBy( x => x.Name );
 
-		foreach( var project in projects.TakeLast(1) )
+		foreach( var project in projects )
         {
 			ConvertProject( project );
         }
 
-        WriteDirectoryPackagesConfig(solutionFolder);
+        if (allReferences.Any())
+        {
+            WriteDirectoryPackagesConfig(solutionFolder);
+        }
+        else
+            Console.WriteLine("No references found...");
     }
 
+    /// <summary>
+    /// Write the packages.config file.
+    /// TODO: Would be good to read the existing file and merge if appropriate.
+    /// </summary>
+    /// <param name="solutionFolder"></param>
 	private void WriteDirectoryPackagesConfig(string solutionFolder)
     {
         var lines = new List<string>();
@@ -43,8 +53,7 @@ public class PackageConverter
         lines.Add("  </ItemGroup>");
         lines.Add("</Project>");
 
-        foreach (var line in lines)
-            Console.WriteLine(line);
+        Console.WriteLine($"Writing {allReferences.Count} refs to Directory.Packages.config to {solutionFolder}...");
 
         var packageConfig = Path.Combine(solutionFolder, "Directory.Packages.config");
 
@@ -68,6 +77,8 @@ public class PackageConverter
 
 	private void ConvertProject( FileInfo csprojFile )
     {
+        Console.WriteLine($"Processing references for {csprojFile.FullName}...");
+
         var xml = XDocument.Load( csprojFile.FullName);
 
 		var refs = xml.Descendants("PackageReference");
@@ -93,6 +104,7 @@ public class PackageConverter
 						continue;
 				}
 
+                Console.WriteLine($" Found new reference: {package} {version}");
 				allReferences[package] = version;
             }
         }
