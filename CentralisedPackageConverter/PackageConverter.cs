@@ -53,9 +53,9 @@ public class PackageConverter
         lines.Add("  </ItemGroup>");
         lines.Add("</Project>");
 
-        Console.WriteLine($"Writing {allReferences.Count} refs to Directory.Packages.config to {solutionFolder}...");
+        Console.WriteLine($"Writing {allReferences.Count} refs to Directory.Packages.props to {solutionFolder}...");
 
-        var packageConfig = Path.Combine(solutionFolder, "Directory.Packages.config");
+        var packageConfig = Path.Combine(solutionFolder, "Directory.Packages.props");
 
         File.WriteAllLines(packageConfig, lines);
     }
