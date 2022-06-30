@@ -187,7 +187,7 @@ public class PackageConverter
     {
         Console.WriteLine($"Processing references for {csprojFile.FullName}...");
 
-        var xml = XDocument.Load(csprojFile.FullName);
+        var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
 
         var refs = xml.Descendants("PackageReference");
 
