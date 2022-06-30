@@ -196,11 +196,14 @@ public class PackageConverter
         foreach (var reference in refs)
         {
             var package = GetAttributeValue(reference, "Include", false);
-            var version = GetAttributeValue(reference, "Version", true);
+
+            if (string.IsNullOrEmpty(package))
+                package = GetAttributeValue(reference, "Update", false);
 
             if (string.IsNullOrEmpty(package))
                 continue;
 
+            var version = GetAttributeValue(reference, "Version", true);
             if (!string.IsNullOrEmpty(version))
             {
                 needToWriteChanges = true;
