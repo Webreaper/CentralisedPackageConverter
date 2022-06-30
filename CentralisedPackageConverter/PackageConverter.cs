@@ -6,30 +6,39 @@ namespace CentralisedPackageConverter;
 
 public class PackageConverter
 {
-	private IDictionary<string, string> allReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private IDictionary<string, string> allReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
-    public void ProcessConversion( string solutionFolder, bool revert, bool dryRun, bool force )
-	{
+    private static readonly HashSet<string> s_extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csproj",
+        ".vbproj",
+        ".props",
+        ".targets"
+    };
+
+    public void ProcessConversion(string solutionFolder, bool revert, bool dryRun, bool force)
+    {
         var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
 
         if (dryRun)
             Console.WriteLine("Dry run enabled - no changes will be made on disk.");
 
-		var rootDir = new DirectoryInfo(solutionFolder);
+        var rootDir = new DirectoryInfo(solutionFolder);
 
         // Find all the csproj files to process
         var projects = rootDir.GetFiles("*.*", SearchOption.AllDirectories)
-                              .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                              .Where(x => s_extensions.Contains(x.Extension))
+                              .Where(x => !x.Name.Equals(s_DirPackageProps))
                               .OrderBy(x => x.Name)
                               .ToList();
 
-        if( ! force && ! dryRun )
+        if (!force && !dryRun)
         {
             Console.WriteLine("WARNING: You are about to make changes to the following project files:");
             projects.ForEach(p => Console.WriteLine($" {p.Name}"));
             Console.WriteLine("Are you sure you want to continue? [y/n]");
-            if( Console.ReadKey().Key != ConsoleKey.Y )
+            if (Console.ReadKey().Key != ConsoleKey.Y)
             {
                 Console.WriteLine("Aborting...");
                 return;
@@ -40,9 +49,9 @@ public class PackageConverter
         if (revert)
             ReadDirectoryPackagePropsFile(packageConfigPath);
 
-        if( revert )
+        if (revert)
         {
-            projects.ForEach( proj => RevertProject(proj, dryRun));
+            projects.ForEach(proj => RevertProject(proj, dryRun));
 
             if (!dryRun)
             {
@@ -81,7 +90,7 @@ public class PackageConverter
         {
             var package = GetAttributeValue(reference, "Include", false);
 
-            if( allReferences.TryGetValue( package, out var version ))
+            if (allReferences.TryGetValue(package, out var version))
             {
                 reference.SetAttributeValue("Version", version);
                 needToWriteChanges = true;
@@ -140,7 +149,7 @@ public class PackageConverter
 
         Console.WriteLine($"Writing {allReferences.Count} refs to {s_DirPackageProps} to {packageConfigPath}...");
 
-        if( dryRun )
+        if (dryRun)
             lines.ForEach(x => Console.WriteLine(x));
         else
             File.WriteAllLines(packageConfigPath, lines);
@@ -154,16 +163,16 @@ public class PackageConverter
     /// <param name="name"></param>
     /// <param name="remove"></param>
     /// <returns></returns>
-    private string? GetAttributeValue( XElement elem, string name, bool remove )
+    private string? GetAttributeValue(XElement elem, string name, bool remove)
     {
-		var attr = elem.Attributes(name);
+        var attr = elem.Attributes(name);
 
-		if( attr != null )
+        if (attr != null)
         {
-			var value = attr.Select(x => x.Value).FirstOrDefault();
-            if( remove )
-				attr.Remove();
-			return value;
+            var value = attr.Select(x => x.Value).FirstOrDefault();
+            if (remove)
+                attr.Remove();
+            return value;
         }
 
         return null;
@@ -174,42 +183,62 @@ public class PackageConverter
     /// </summary>
     /// <param name="csprojFile"></param>
     /// <param name="dryRun"></param>
-	private void ConvertProject( FileInfo csprojFile, bool dryRun)
+	private void ConvertProject(FileInfo csprojFile, bool dryRun)
     {
         Console.WriteLine($"Processing references for {csprojFile.FullName}...");
 
-        var xml = XDocument.Load( csprojFile.FullName);
+        var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
 
-		var refs = xml.Descendants("PackageReference");
+        var refs = xml.Descendants("PackageReference");
 
-		bool needToWriteChanges = false;
+        bool needToWriteChanges = false;
 
-		foreach( var reference in refs )
+        var referencesToRemove = new List<XElement>();
+        foreach (var reference in refs)
         {
-			var package = GetAttributeValue( reference, "Include", false );
-            var version = GetAttributeValue( reference, "Version", true ); 
+            var removeNodeIfEmpty = false;
 
-			if( string.IsNullOrEmpty( package ))
-				continue;
+            var package = GetAttributeValue(reference, "Include", false);
 
-			if (!string.IsNullOrEmpty(version))
-			{
+            if (string.IsNullOrEmpty(package))
+            {
+                package = GetAttributeValue(reference, "Update", false);
+                removeNodeIfEmpty = true;
+            }
+
+            if (string.IsNullOrEmpty(package))
+                continue;
+
+            var version = GetAttributeValue(reference, "Version", true);
+
+            if (!string.IsNullOrEmpty(version))
+            {
+                // If there is only an Update attribute left, and no child elements, then this node
+                // isn't useful any more, so we can remove it entirely
+                if (removeNodeIfEmpty && reference.Attributes().Count() == 1 && !reference.Elements().Any())
+                    referencesToRemove.Add(reference);
+
                 needToWriteChanges = true;
 
                 if (allReferences.TryGetValue(package, out var existingVer))
-				{
-					// Existing reference for this package of same or greater version, so skip
-					if (version.CompareTo(existingVer) >= 0)
-						continue;
-				}
+                {
+                    // Existing reference for this package of same or greater version, so skip
+                    if (version.CompareTo(existingVer) >= 0)
+                        continue;
+                }
 
                 Console.WriteLine($" Found new reference: {package} {version}");
-				allReferences[package] = version;
+                allReferences[package] = version;
             }
         }
 
-		if( needToWriteChanges && ! dryRun )
-			xml.Save(csprojFile.FullName);
+        foreach (var reference in referencesToRemove)
+        {
+            reference.Remove();
+        }
+
+        if (needToWriteChanges && !dryRun)
+            xml.Save(csprojFile.FullName);
     }
 }
 
