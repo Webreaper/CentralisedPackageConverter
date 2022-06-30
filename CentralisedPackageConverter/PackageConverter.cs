@@ -56,7 +56,7 @@ public class PackageConverter
             if (!dryRun)
             {
                 Console.WriteLine($"Deleting {packageConfigPath}...");
-                //File.Delete(packageConfigPath);
+                File.Delete(packageConfigPath);
             }
         }
         else
