@@ -7,9 +7,9 @@ try
     {
         var converter = new PackageConverter();
 
-        converter.ProcessConversion(o.RootDirectory, o.Revert, o.DryRun);
+        converter.ProcessConversion(o.RootDirectory, o.Revert, o.DryRun, o.Force);
 
-        Console.WriteLine("Complete.");
+        Console.WriteLine("Processing Complete.");
     });
 }
 catch (Exception ex)

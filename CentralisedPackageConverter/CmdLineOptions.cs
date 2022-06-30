@@ -13,4 +13,7 @@ public class CommandLineOptions
 
     [Option('d', "dry-run", HelpText = "Read-only mode (make no changes on disk.")]
     public bool DryRun { get; set; }
+
+    [Option('f', HelpText = "Force changes (don't prompt/check for permission before continuing).")]
+    public bool Force { get; set; }
 };

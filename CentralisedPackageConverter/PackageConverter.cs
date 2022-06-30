@@ -9,7 +9,7 @@ public class PackageConverter
 	private IDictionary<string, string> allReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
-    public void ProcessConversion( string solutionFolder, bool revert, bool dryRun )
+    public void ProcessConversion( string solutionFolder, bool revert, bool dryRun, bool force )
 	{
         var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
 
@@ -23,6 +23,18 @@ public class PackageConverter
                               .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
                               .OrderBy(x => x.Name)
                               .ToList();
+
+        if( ! force && ! dryRun )
+        {
+            Console.WriteLine("WARNING: You are about to make changes to the following project files:");
+            projects.ForEach(p => Console.WriteLine($" {p.Name}"));
+            Console.WriteLine("Are you sure you want to continue? [y/n]");
+            if( Console.ReadKey().Key != ConsoleKey.Y )
+            {
+                Console.WriteLine("Aborting...");
+                return;
+            }
+        }
 
         // If we're reverting, read the references from the central file.
         if (revert)
@@ -78,7 +90,7 @@ public class PackageConverter
                 Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
         }
 
-        if( ! dryRun && needToWriteChanges)
+        if (!dryRun && needToWriteChanges)
             xml.Save(project.FullName);
     }
 
