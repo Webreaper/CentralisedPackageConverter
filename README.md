@@ -16,7 +16,7 @@ This can be laborious for large projects, hence this tool.
 You can install the tool by running:
 
 ```
-dotnet tool uninstall CentralisedPackageConverter --global
+dotnet tool install CentralisedPackageConverter --global
 ```
 
 Then just run the tool:
