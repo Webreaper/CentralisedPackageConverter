@@ -193,19 +193,31 @@ public class PackageConverter
 
         bool needToWriteChanges = false;
 
+        var referencesToRemove = new List<XElement>();
         foreach (var reference in refs)
         {
+            var removeNodeIfEmpty = false;
+
             var package = GetAttributeValue(reference, "Include", false);
 
             if (string.IsNullOrEmpty(package))
+            {
                 package = GetAttributeValue(reference, "Update", false);
+                removeNodeIfEmpty = true;
+            }
 
             if (string.IsNullOrEmpty(package))
                 continue;
 
             var version = GetAttributeValue(reference, "Version", true);
+
             if (!string.IsNullOrEmpty(version))
             {
+                // If there is only an Update attribute left, and no child elements, then this node
+                // isn't useful any more, so we can remove it entirely
+                if (removeNodeIfEmpty && reference.Attributes().Count() == 1 && !reference.Elements().Any())
+                    referencesToRemove.Add(reference);
+
                 needToWriteChanges = true;
 
                 if (allReferences.TryGetValue(package, out var existingVer))
@@ -218,6 +230,11 @@ public class PackageConverter
                 Console.WriteLine($" Found new reference: {package} {version}");
                 allReferences[package] = version;
             }
+        }
+
+        foreach (var reference in referencesToRemove)
+        {
+            reference.Remove();
         }
 
         if (needToWriteChanges && !dryRun)
