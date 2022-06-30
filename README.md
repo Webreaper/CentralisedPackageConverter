@@ -29,7 +29,7 @@ central-pkg-converter /Users/markotway/SomeAwesomeProject
 
 Run the command, passing a folder as the only parameter. The tool will scan for all `.csproj` files within that 
 folder tree, gather up a list of all of the versioned references in the projects, and will then remove the versions
-from the `csproj` file, and write the entries to the `Directory.Packages.props' file.
+from the `csproj` file, and write the entries to the `Directory.Packages.props` file.
 
 ## Command-line Options
 
