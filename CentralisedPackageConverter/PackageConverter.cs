@@ -9,6 +9,14 @@ public class PackageConverter
     private IDictionary<string, string> allReferences = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
+    private static readonly HashSet<string> s_extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ".csproj",
+        ".vbproj",
+        ".props",
+        ".targets"
+    };
+
     public void ProcessConversion(string solutionFolder, bool revert, bool dryRun, bool force)
     {
         var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
@@ -20,7 +28,8 @@ public class PackageConverter
 
         // Find all the csproj files to process
         var projects = rootDir.GetFiles("*.*", SearchOption.AllDirectories)
-                              .Where(x => x.Extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                              .Where(x => s_extensions.Contains(x.Extension))
+                              .Where(x => !x.Name.Equals(s_DirPackageProps))
                               .OrderBy(x => x.Name)
                               .ToList();
 
