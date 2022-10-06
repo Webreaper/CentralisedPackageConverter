@@ -5,6 +5,8 @@ VisualStudioVersion = 25.0.1703.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CentralisedPackageConverter", "CentralisedPackageConverter\CentralisedPackageConverter.csproj", "{E98A0B53-9897-413A-A337-2E41BBA35027}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CentralisedPackageConverter.Tests", "CentralisedPackageConverter.Tests\CentralisedPackageConverter.Tests.csproj", "{7C2FAF55-03F2-49CF-9C6A-6B4398BF6321}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{E98A0B53-9897-413A-A337-2E41BBA35027}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E98A0B53-9897-413A-A337-2E41BBA35027}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E98A0B53-9897-413A-A337-2E41BBA35027}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C2FAF55-03F2-49CF-9C6A-6B4398BF6321}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C2FAF55-03F2-49CF-9C6A-6B4398BF6321}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C2FAF55-03F2-49CF-9C6A-6B4398BF6321}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C2FAF55-03F2-49CF-9C6A-6B4398BF6321}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
