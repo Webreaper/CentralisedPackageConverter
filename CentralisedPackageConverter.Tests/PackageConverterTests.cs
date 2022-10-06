@@ -9,6 +9,7 @@ public class PackageConverterTests
     [SetUp]
     public void SetUp()
     {
+        // TODO modify to support linux and setup a github action
         this.fixtureDirectory = "c:/temp/CentralisedPackageConverter";
         if (!Directory.Exists(this.fixtureDirectory))
         {
