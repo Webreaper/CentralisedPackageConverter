@@ -55,6 +55,42 @@ public class PackageConverterTests
     }
 
     [Test]
+    public void BasicPackageWithVersionElementWorks()
+    {
+        var initialProjectContent = 
+                @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"">
+      <Version>1.2.3</Version>
+    </PackageReference>
+  </ItemGroup>
+</Project>"
+            ;
+
+        var expectedProjectContent = 
+                @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"">
+    </PackageReference>
+  </ItemGroup>
+</Project>"
+            ;
+        var expectedPackageContent =
+                @"<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>
+"
+            ;
+        
+        TestWithSingleProject(initialProjectContent, expectedProjectContent, expectedPackageContent);
+    }
+    
+    [Test]
     public void BasicPackageWithConditionWorks()
     {
         var initialProjectContent = @"<Project Sdk=""Microsoft.NET.Sdk"">

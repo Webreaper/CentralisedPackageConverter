@@ -78,7 +78,7 @@ public class PackageConverter
     /// <param name="dryRun"></param>
     private void RevertProject(FileInfo project, bool dryRun)
     {
-        // TODO
+        // TODO this won't work right now, it needs to take into account conditions
         var xml = XDocument.Load(project.FullName);
 
         var refs = xml.Descendants("PackageReference");
@@ -108,7 +108,7 @@ public class PackageConverter
     /// <param name="packageConfigPath"></param>
     private void ReadDirectoryPackagePropsFile(string packageConfigPath)
     {
-        // TODO
+        // TODO this won't work right now, it needs to take into account conditions
         // var xml = XDocument.Load(packageConfigPath);
         //
         // var refs = xml.Descendants("PackageVersion");
@@ -224,7 +224,22 @@ public class PackageConverter
 
             if (string.IsNullOrEmpty(version))
             {
-                continue;
+                var versionElement = packageReference.Descendants().FirstOrDefault();
+                if (versionElement == null)
+                {
+                    continue;
+                }
+                
+                version = versionElement.Value;
+                if (versionElement.PreviousNode is XText textNode)
+                {
+                    textNode.Remove();
+                }
+                versionElement.Remove();
+                if (!versionElement.HasElements)
+                {
+                    // TODO change to self closing?
+                }
             }
             
             // If there is only an Update attribute left, and no child elements, then this node
@@ -236,13 +251,13 @@ public class PackageConverter
 
             var itemGroup = packageReference.Parent;
             var condition = GetAttributeValue(itemGroup, "Condition", false) ?? string.Empty;
-            
+
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var referencesForCondition))
             {
                 referencesForCondition = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = referencesForCondition;
             }
-            
+
             if (referencesForCondition.TryGetValue(version, out var existing))
             {
                 // Existing reference for this package of same or greater version, so skip
@@ -261,7 +276,7 @@ public class PackageConverter
 
         if (needToWriteChanges && !dryRun)
         {
-            // TODO test with old style csproj?
+            // this keeps the <xml element from appearing on the first line
             File.WriteAllText(csprojFile.FullName, xml.ToString());
         }
     }
