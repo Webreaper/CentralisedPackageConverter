@@ -78,28 +78,38 @@ public class PackageConverter
     /// <param name="dryRun"></param>
     private void RevertProject(FileInfo project, bool dryRun)
     {
-        // TODO this won't work right now, it needs to take into account conditions
         var xml = XDocument.Load(project.FullName);
 
-        var refs = xml.Descendants("PackageReference");
+        var packagesReferences = xml.Descendants("PackageReference");
 
-        bool needToWriteChanges = false;
+        var needToWriteChanges = false;
 
-        foreach (var reference in refs)
+        foreach (var packageReference in packagesReferences)
         {
-            var package = GetAttributeValue(reference, "Include", false);
+            var condition = GetAttributeValue(packageReference.Parent, "Condition", false) ?? string.Empty;
+            var package = GetAttributeValue(packageReference, "Include", false);
 
-            if (this.referencesByConditionThenName.TryGetValue(package, out var version))
+            if (this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
             {
-                reference.SetAttributeValue("Version", version);
-                needToWriteChanges = true;
+                if (packagesByName.TryGetValue(package, out var version))
+                {
+                    packageReference.SetAttributeValue("Version", version);
+                    needToWriteChanges = true;    
+                }
+                else
+                {
+                    Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");    
+                }
             }
             else
-                Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
+            {
+                Console.WriteLine($"No condition found in {s_DirPackageProps} file for {condition}! Skipping...");
+            }
+                
         }
 
         if (!dryRun && needToWriteChanges)
-            xml.Save(project.FullName);
+            File.WriteAllText(project.FullName, xml.ToString());
     }
 
     /// <summary>
@@ -108,20 +118,26 @@ public class PackageConverter
     /// <param name="packageConfigPath"></param>
     private void ReadDirectoryPackagePropsFile(string packageConfigPath)
     {
-        // TODO this won't work right now, it needs to take into account conditions
-        // var xml = XDocument.Load(packageConfigPath);
-        //
-        // var refs = xml.Descendants("PackageVersion");
-        //
-        // foreach (var reference in refs)
-        // {
-        //     var package = GetAttributeValue(reference, "Include", false);
-        //     var version = GetAttributeValue(reference, "Version", false);
-        //
-        //     this.referencesByConditionThenName[package] = version;
-        // }
-        //
-        // Console.WriteLine($"Read {this.referencesByConditionThenName.Count} references from {packageConfigPath}");
+        var xml = XDocument.Load(packageConfigPath);
+        
+        var packageVersions = xml.Descendants("PackageVersion");
+        
+        foreach (var packageVersion in packageVersions)
+        {
+            var package = GetAttributeValue(packageVersion, "Include", false);
+            var version = GetAttributeValue(packageVersion, "Version", false);
+            var condition = GetAttributeValue(packageVersion.Parent, "Condition", false) ?? string.Empty;
+
+            if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
+            {
+                packagesByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                this.referencesByConditionThenName[condition] = packagesByName;
+            }
+        
+            packagesByName[package] = version;
+        }
+        
+        Console.WriteLine($"Read {this.referencesByConditionThenName.Count} references from {packageConfigPath}");
     }
 
     /// <summary>
