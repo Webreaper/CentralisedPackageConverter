@@ -80,7 +80,7 @@ public class PackageConverter
     {
         var xml = XDocument.Load(project.FullName);
 
-        var packagesReferences = xml.Descendants("PackageReference");
+        var packagesReferences = GetDescendants(xml, "PackageReference");
 
         var needToWriteChanges = false;
 
@@ -119,8 +119,8 @@ public class PackageConverter
     private void ReadDirectoryPackagePropsFile(string packageConfigPath)
     {
         var xml = XDocument.Load(packageConfigPath);
-        
-        var packageVersions = xml.Descendants("PackageVersion");
+
+        var packageVersions = GetDescendants(xml, "PackageVersion");
         
         foreach (var packageVersion in packageVersions)
         {
@@ -183,6 +183,19 @@ public class PackageConverter
     }
 
     /// <summary>
+    /// Get descendants from an XML Document
+    /// </summary>
+    /// <param name="xml"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    private IEnumerable<XElement> GetDescendants(XDocument xml, string name)
+    {
+        var rootNamespace = xml.Root?.GetDefaultNamespace() ?? XNamespace.None;
+
+        return xml.Descendants(rootNamespace + name);
+    }
+
+    /// <summary>
     /// Safely get an attribute value from an XML Element, optionally
     /// deleting it after the value has been retrieved.
     /// </summary>
@@ -216,7 +229,7 @@ public class PackageConverter
 
         var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
 
-        var packageReferences = xml.Descendants("PackageReference");
+        var packageReferences = GetDescendants(xml, "PackageReference");
 
         var needToWriteChanges = false;
 

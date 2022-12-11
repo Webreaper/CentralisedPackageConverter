@@ -56,6 +56,40 @@ public class PackageConverterTests
     }
 
     [Test]
+    public void BasicPackageWithRootNamespaceWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" />
+  </ItemGroup>
+</Project>";
+        var expectedPackageContent =
+            @"<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>
+";
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent
+        );
+    }
+
+    [Test]
     public void BasicPackageWithVersionElementWorks()
     {
         var initialProjectContent =
@@ -202,6 +236,74 @@ public class PackageConverterTests
     {
         var initialProjectContent =
             @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" />
+  </ItemGroup>
+</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>";
+        var initialPackageContent =
+            @"<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>
+";
+
+        TestRevertWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            initialPackageContent
+        );
+    }
+
+    [Test]
+    public void BasicRevertWithRootNamespaceWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" />
+  </ItemGroup>
+</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"" xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>";
+        var initialPackageContent =
+            @"<Project xmlns=""http://schemas.microsoft.com/developer/msbuild/2003"">
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>
+";
+
+        TestRevertWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            initialPackageContent
+        );
+    }
+
+    [Test]
+    public void BasicRevertWithConditionWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">
   <ItemGroup Condition="" '$(TargetFramework)' == 'net6.0' "">
     <PackageReference Include=""TestPackage"" />
   </ItemGroup>
@@ -229,34 +331,6 @@ public class PackageConverterTests
   </ItemGroup>
   <ItemGroup Condition="" '$(TargetFramework)' == 'net48' "">
     <PackageVersion Include=""TestPackage"" Version=""4.5.6"" />
-  </ItemGroup>
-</Project>
-";
-    }
-
-    [Test]
-    public void BasicConditionRevertWorks()
-    {
-        var initialProjectContent =
-            @"<Project Sdk=""Microsoft.NET.Sdk"">
-  <ItemGroup>
-    <PackageReference Include=""TestPackage"" />
-  </ItemGroup>
-</Project>";
-
-        var expectedProjectContent =
-            @"<Project Sdk=""Microsoft.NET.Sdk"">
-  <ItemGroup>
-    <PackageReference Include=""TestPackage"" Version=""1.2.3"" />
-  </ItemGroup>
-</Project>";
-        var initialPackageContent =
-            @"<Project>
-  <PropertyGroup>
-    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
   </ItemGroup>
 </Project>
 ";
