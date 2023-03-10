@@ -221,7 +221,7 @@ public class PackageConverterTests
         var csProjPath = Path.Combine(testDirectory, "Test.csproj");
         File.WriteAllText(csProjPath, initialProjectContent);
 
-        packageConverter.ProcessConversion(testDirectory, false, false, true);
+        packageConverter.ProcessConversion(testDirectory, false, false, true, false);
 
         var newCsProjContent = File.ReadAllText(csProjPath);
         newCsProjContent.Should().Be(expectedProjectContent);
@@ -358,7 +358,7 @@ public class PackageConverterTests
             initialPackageContent
         );
 
-        packageConverter.ProcessConversion(testDirectory, true, false, true);
+        packageConverter.ProcessConversion(testDirectory, true, false, true, false);
 
         var newCsProjContent = File.ReadAllText(csProjPath);
         newCsProjContent.Should().Be(expectedProjectContent);
