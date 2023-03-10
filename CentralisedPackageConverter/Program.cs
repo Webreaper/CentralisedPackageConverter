@@ -7,7 +7,7 @@ try
     {
         var converter = new PackageConverter();
 
-        converter.ProcessConversion(o.RootDirectory, o.Revert, o.DryRun, o.Force);
+        converter.ProcessConversion(o.RootDirectory, o.Revert, o.DryRun, o.Force, o.Merge);
 
         Console.WriteLine("Processing Complete.");
     });
