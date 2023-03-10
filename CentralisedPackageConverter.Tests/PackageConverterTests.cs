@@ -56,6 +56,40 @@ public class PackageConverterTests
     }
 
     [Test]
+    public void CaseInsensitiveVersionAttrWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" version=""1.2.3"" />
+  </ItemGroup>
+</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <ItemGroup>
+    <PackageReference Include=""TestPackage"" />
+  </ItemGroup>
+</Project>";
+        var expectedPackageContent =
+            @"<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />
+  </ItemGroup>
+</Project>
+";
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent
+        );
+    }
+
+    [Test]
     public void BasicPackageWithRootNamespaceWorks()
     {
         var initialProjectContent =

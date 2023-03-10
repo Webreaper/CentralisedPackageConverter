@@ -89,28 +89,34 @@ public class PackageConverter
 
         var needToWriteChanges = false;
 
-        foreach (var packageReference in packagesReferences)
+        foreach (var packageReference in packagesReferences )
         {
-            var condition = GetAttributeValue(packageReference.Parent, "Condition", false) ?? string.Empty;
-            var package = GetAttributeValue(packageReference, "Include", false);
-
-            if (this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
+            if( packageReference.Parent is not null )
             {
-                if (packagesByName.TryGetValue(package, out var version))
+                var condition = GetAttributeValue( packageReference.Parent, "Condition", false ) ?? string.Empty;
+                var package = GetAttributeValue( packageReference, "Include", false );
+
+                if( this.referencesByConditionThenName.TryGetValue( condition, out var packagesByName ) )
                 {
-                    packageReference.SetAttributeValue("Version", version);
-                    needToWriteChanges = true;    
+                    if( packagesByName.TryGetValue( package, out var version ) )
+                    {
+                        packageReference.SetAttributeValue( "Version", version );
+                        needToWriteChanges = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine( $"No version found in {s_DirPackageProps} file for {package}! Skipping..." );
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");    
+                    Console.WriteLine( $"No condition found in {s_DirPackageProps} file for {condition}! Skipping..." );
                 }
             }
             else
             {
-                Console.WriteLine($"No condition found in {s_DirPackageProps} file for {condition}! Skipping...");
+                Console.WriteLine( $"Package reference does not have parent. Skipping..." );
             }
-                
         }
 
         if (!dryRun && needToWriteChanges)
@@ -217,9 +223,10 @@ public class PackageConverter
     /// <returns></returns>
     private string? GetAttributeValue(XElement elem, string name, bool remove)
     {
-        var attr = elem.Attributes(name);
+        // Use case-insensitive attribute lookup
+        var attr = elem.Attributes().Where( x => string.Equals( x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase ) );
 
-        if (attr != null)
+        if( attr != null)
         {
             var value = attr.Select(x => x.Value).FirstOrDefault();
             if (remove)
