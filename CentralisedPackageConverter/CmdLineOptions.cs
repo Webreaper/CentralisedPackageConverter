@@ -16,4 +16,7 @@ public class CommandLineOptions
 
     [Option('f', HelpText = "Force changes (don't prompt/check for permission before continuing).")]
     public bool Force { get; set; }
+
+    [Option('m', HelpText = "Merge changes with existing directory file")]
+    public bool Merge { get; set; }
 };

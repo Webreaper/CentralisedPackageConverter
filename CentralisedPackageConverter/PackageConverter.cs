@@ -17,7 +17,7 @@ public class PackageConverter
         ".targets"
     };
 
-    public void ProcessConversion(string solutionFolder, bool revert, bool dryRun, bool force)
+    public void ProcessConversion(string solutionFolder, bool revert, bool dryRun, bool force, bool merge)
     {
         var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
 
@@ -59,6 +59,11 @@ public class PackageConverter
         }
         else
         {
+            if (merge)
+            {
+                ReadDirectoryPackagePropsFile(packageConfigPath);
+            }
+
             projects.ForEach(proj => ConvertProject(proj, dryRun));
 
             if (this.referencesByConditionThenName.Any())
@@ -179,7 +184,14 @@ public class PackageConverter
         if (dryRun)
             lines.ForEach(x => Console.WriteLine(x));
         else
+        {
+            // if the file exists already (we are doing a merge with old file) - create a backup of the old file
+            if (File.Exists(packageConfigPath))
+            {
+                File.Copy(packageConfigPath, System.IO.Path.ChangeExtension(packageConfigPath, "bak"));
+            }
             File.WriteAllLines(packageConfigPath, lines);
+        }
     }
 
     /// <summary>
