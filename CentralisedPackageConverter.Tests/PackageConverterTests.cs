@@ -610,9 +610,6 @@ public class PackageConverterTests
     )
     {
         var packageConverter = new PackageConverter();
-        //var testDirectory = Path.Combine(this.FixtureDirectory, DateTime.Now.Ticks.ToString());
-        //Directory.CreateDirectory(testDirectory);
-        //var csProjPath = Path.Combine(testDirectory, "Test.csproj");
         WriteAllText(ProjectFilePath, initialProjectContent, encodingWebName);
         WriteAllText(PackagesFilePath, initialPackageContent, encodingWebName);
 
