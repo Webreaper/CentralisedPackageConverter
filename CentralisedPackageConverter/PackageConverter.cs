@@ -327,7 +327,7 @@ public class PackageConverter
                 this.referencesByConditionThenName[condition] = referencesForCondition;
             }
 
-            if (referencesForCondition.TryGetValue(version, out var existing))
+            if (referencesForCondition.TryGetValue(package, out var existing))
             {
                 // Existing reference for this package of same or greater version, so skip
                 if (version.CompareTo(existing) >= 0)
