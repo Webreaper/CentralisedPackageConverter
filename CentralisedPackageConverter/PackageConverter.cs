@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Xml.Linq;
 
 namespace CentralisedPackageConverter;
@@ -17,14 +18,23 @@ public class PackageConverter
         ".targets"
     };
 
-    public void ProcessConversion(string solutionFolder, bool revert, bool dryRun, bool force, bool merge)
+    public void ProcessConversion(CommandLineOptions o)
     {
-        var packageConfigPath = Path.Combine(solutionFolder, s_DirPackageProps);
+        if (string.IsNullOrWhiteSpace(o.RootDirectory))
+        {
+            Console.WriteLine("Root directory argument must not be empty.");
+            return;
+        }
 
-        if (dryRun)
+        var encoding = Formatting.GetCommonEncoding(o.EncodingWebName);
+        var linewrap = Formatting.GetLineWrap(o.LineWrap);
+
+        var packageConfigPath = Path.Combine(o.RootDirectory, s_DirPackageProps);
+
+        if (o.DryRun)
             Console.WriteLine("Dry run enabled - no changes will be made on disk.");
 
-        var rootDir = new DirectoryInfo(solutionFolder);
+        var rootDir = new DirectoryInfo(o.RootDirectory);
 
         // Find all the csproj files to process
         var projects = rootDir.GetFiles("*.*", SearchOption.AllDirectories)
@@ -33,7 +43,7 @@ public class PackageConverter
                               .OrderBy(x => x.Name)
                               .ToList();
 
-        if (!force && !dryRun)
+        if (!o.Force && !o.DryRun)
         {
             Console.WriteLine("WARNING: You are about to make changes to the following project files:");
             projects.ForEach(p => Console.WriteLine($" {p.Name}"));
@@ -45,13 +55,13 @@ public class PackageConverter
             }
         }
         
-        if (revert)
+        if (o.Revert)
         {
             ReadDirectoryPackagePropsFile(packageConfigPath);
             
-            projects.ForEach(proj => RevertProject(proj, dryRun));
+            projects.ForEach(proj => RevertProject(proj, o.DryRun, encoding, linewrap));
 
-            if (!dryRun)
+            if (!o.DryRun)
             {
                 Console.WriteLine($"Deleting {packageConfigPath}...");
                 File.Delete(packageConfigPath);
@@ -59,16 +69,16 @@ public class PackageConverter
         }
         else
         {
-            if (merge)
+            if (o.Merge)
             {
                 ReadDirectoryPackagePropsFile(packageConfigPath);
             }
 
-            projects.ForEach(proj => ConvertProject(proj, dryRun));
+            projects.ForEach(proj => ConvertProject(proj, o.DryRun, encoding, linewrap));
 
             if (this.referencesByConditionThenName.Any())
             {
-                WriteDirectoryPackagesConfig(packageConfigPath, dryRun);
+                WriteDirectoryPackagesConfig(packageConfigPath, o.DryRun, o.TransitivePinning, encoding, linewrap);
             }
             else
                 Console.WriteLine("No versioned references found in csproj files!");
@@ -79,9 +89,11 @@ public class PackageConverter
     /// Revert a project to non-centralised package management
     /// by adding the versions back into the csproj file.
     /// </summary>
-    /// <param name="project"></param>
-    /// <param name="dryRun"></param>
-    private void RevertProject(FileInfo project, bool dryRun)
+    /// <param name="project">Project file</param>
+    /// <param name="dryRun">Test only</param>
+    /// <param name="encoding">Use when writing file revert</param>
+    /// <param name="lineWrap">Line wrap character(s) to use.</param>
+    private void RevertProject(FileInfo project, bool dryRun, Encoding encoding, string lineWrap)
     {
         var xml = XDocument.Load(project.FullName);
 
@@ -93,8 +105,8 @@ public class PackageConverter
         {
             if( packageReference.Parent is not null )
             {
-                var condition = GetAttributeValue( packageReference.Parent, "Condition", false ) ?? string.Empty;
-                var package = GetAttributeValue( packageReference, "Include", false );
+                var condition = GetAttributeValue( packageReference.Parent, "Condition" ) ?? string.Empty;
+                var package = GetAttributeValue( packageReference, "Include" );
 
                 if( this.referencesByConditionThenName.TryGetValue( condition, out var packagesByName ) )
                 {
@@ -120,7 +132,10 @@ public class PackageConverter
         }
 
         if (!dryRun && needToWriteChanges)
-            File.WriteAllText(project.FullName, xml.ToString());
+        {
+            var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
+            File.WriteAllText(project.FullName, xmlText, encoding);
+        }
     }
 
     /// <summary>
@@ -135,9 +150,9 @@ public class PackageConverter
         
         foreach (var packageVersion in packageVersions)
         {
-            var package = GetAttributeValue(packageVersion, "Include", false);
-            var version = GetAttributeValue(packageVersion, "Version", false);
-            var condition = GetAttributeValue(packageVersion.Parent, "Condition", false) ?? string.Empty;
+            var package = GetAttributeValue(packageVersion, "Include");
+            var version = GetAttributeValue(packageVersion, "Version");
+            var condition = GetAttributeValue(packageVersion.Parent, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
             {
@@ -155,15 +170,16 @@ public class PackageConverter
     /// Write the packages.config file.
     /// TODO: Would be good to read the existing file and merge if appropriate.
     /// </summary>
-    /// <param name="solutionFolder"></param>
-    private void WriteDirectoryPackagesConfig(string packageConfigPath, bool dryRun)
+    private void WriteDirectoryPackagesConfig(string packageConfigPath, bool dryRun, bool transPin, Encoding encoding, string lineWrap)
     {
-        var lines = new List<string>();
-
-        lines.Add("<Project>");
-        lines.Add("  <PropertyGroup>");
-        lines.Add("    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>");
-        lines.Add("  </PropertyGroup>");
+        var lines = new List<string>
+        {
+            "<Project>",
+            "  <PropertyGroup>",
+            "    " + new XElement("ManagePackageVersionsCentrally", true),
+            "    " + new XElement("CentralPackageTransitivePinningEnabled", transPin),
+            "  </PropertyGroup>"
+        };
 
         foreach (var condition in this.referencesByConditionThenName.Keys)
         {
@@ -196,7 +212,7 @@ public class PackageConverter
             {
                 File.Copy(packageConfigPath, System.IO.Path.ChangeExtension(packageConfigPath, "bak"));
             }
-            File.WriteAllLines(packageConfigPath, lines);
+            File.WriteAllText(packageConfigPath, string.Concat(lines.Select(l => l + lineWrap)), encoding);
         }
     }
 
@@ -217,32 +233,36 @@ public class PackageConverter
     /// Safely get an attribute value from an XML Element, optionally
     /// deleting it after the value has been retrieved.
     /// </summary>
-    /// <param name="elem"></param>
-    /// <param name="name"></param>
-    /// <param name="remove"></param>
-    /// <returns></returns>
-    private string? GetAttributeValue(XElement elem, string name, bool remove)
+    /// <param name="elem">XML element. If null, result is also null.</param>
+    /// <param name="name">Attribute name, checked namespace- and case-insensitive (pick first)</param>
+    private static string? GetAttributeValue(XElement? elem, string name)
     {
         // Use case-insensitive attribute lookup
-        var attr = elem.Attributes().Where( x => string.Equals( x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase ) );
+        var attr = elem?.Attributes().FirstOrDefault( x => 
+            string.Equals( x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase ));
 
-        if( attr != null)
-        {
-            var value = attr.Select(x => x.Value).FirstOrDefault();
-            if (remove)
-                attr.Remove();
-            return value;
-        }
+        return attr?.Value;
+    }
 
-        return null;
+    /// <summary>
+    /// Safely delete attributes with a name.
+    /// </summary>
+    /// <param name="elem">XML element</param>
+    /// <param name="name">Attribute name, checked namespace- and case-insensitive (may be multiple).</param>
+    private static void RemoveAttributes(XElement elem, string name)
+    {
+        // Use case-insensitive attribute lookup
+        var attr = elem.Attributes()
+            .Where(x => string.Equals(x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+            attr.Remove();
     }
 
     /// <summary>
     /// Converts a csproj to Centrally managed packaging.
     /// </summary>
-    /// <param name="csprojFile"></param>
-    /// <param name="dryRun"></param>
-    private void ConvertProject(FileInfo csprojFile, bool dryRun)
+    private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap)
     {
         Console.WriteLine($"Processing references for {csprojFile.FullName}...");
 
@@ -257,18 +277,19 @@ public class PackageConverter
         {
             var removeNodeIfEmpty = false;
 
-            var package = GetAttributeValue(packageReference, "Include", false);
+            var package = GetAttributeValue(packageReference, "Include");
 
             if (string.IsNullOrEmpty(package))
             {
-                package = GetAttributeValue(packageReference, "Update", false);
+                package = GetAttributeValue(packageReference, "Update");
                 removeNodeIfEmpty = true;
             }
 
             if (string.IsNullOrEmpty(package))
                 continue;
 
-            var version = GetAttributeValue(packageReference, "Version", true);
+            var version = GetAttributeValue(packageReference, "Version");
+            RemoveAttributes(packageReference, "Version");
 
             if (string.IsNullOrEmpty(version))
             {
@@ -298,7 +319,7 @@ public class PackageConverter
             needToWriteChanges = true;
 
             var itemGroup = packageReference.Parent;
-            var condition = GetAttributeValue(itemGroup, "Condition", false) ?? string.Empty;
+            var condition = GetAttributeValue(itemGroup, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var referencesForCondition))
             {
@@ -325,7 +346,8 @@ public class PackageConverter
         if (needToWriteChanges && !dryRun)
         {
             // this keeps the <xml element from appearing on the first line
-            File.WriteAllText(csprojFile.FullName, xml.ToString());
+            var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
+            File.WriteAllText(csprojFile.FullName, xmlText, encoding);
         }
     }
 }
