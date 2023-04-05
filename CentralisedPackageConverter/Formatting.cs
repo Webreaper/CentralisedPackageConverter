@@ -24,7 +24,6 @@ public static class Formatting
         var encoding = !string.IsNullOrWhiteSpace(encodingWebName)
             ? Encoding.GetEncoding(encodingWebName)
             : Encoding.Default;
-        Console.WriteLine("Writing files with encoding: " + encoding.WebName);
         return encoding;
     }
 

@@ -1,6 +1,5 @@
-﻿using System;
-using System.Text;
-using CommandLine;
+﻿using CommandLine;
+using NuGet.Versioning;
 
 namespace CentralisedPackageConverter;
 
@@ -29,4 +28,16 @@ public class CommandLineOptions
 
     [Option('l', "linewrap", HelpText = "Line wrap style: 'lf'=Unix, 'crlf'=Windows, 'cr'=Mac. Default is system style." )]
     public string? LineWrap { get; set; }
+
+    [Option('v', "min-version", HelpText = "Pick minimum instead of maximum package version number.")]
+    public bool PickMinVersion { get; set; }
+
+    [Option('p', "ignore-prerelease", HelpText = "Ignore prerelease versions.")]
+    public bool IgnorePrerelease { get; set; }
+
+    [Option('c', "version-comparison", 
+        HelpText = $"Which NuGet version parts to consider (enum {nameof(VersionComparison)}): " +
+            $"{nameof(VersionComparison.Default)}, {nameof(VersionComparison.Version)}, " + 
+            $"{nameof(VersionComparison.VersionRelease)}, {nameof(VersionComparison.VersionReleaseMetadata)}")]
+    public VersionComparison VersionComparison { get; set; }
 };

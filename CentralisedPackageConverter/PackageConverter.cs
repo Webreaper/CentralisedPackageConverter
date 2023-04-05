@@ -1,13 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 using System.Xml.Linq;
+using NuGet.Versioning;
 
 namespace CentralisedPackageConverter;
 
 public class PackageConverter
 {
-    private readonly Dictionary<string, Dictionary<string, string>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, SemanticVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
     private static readonly HashSet<string> s_extensions = new(StringComparer.OrdinalIgnoreCase)
@@ -28,6 +27,11 @@ public class PackageConverter
 
         var encoding = Formatting.GetCommonEncoding(o.EncodingWebName);
         var linewrap = Formatting.GetLineWrap(o.LineWrap);
+        var versioning = new Versioning(o.PickMinVersion, o.IgnorePrerelease, o.VersionComparison);
+
+        Console.WriteLine("Writing files with encoding: {0}", encoding.WebName);
+        Console.WriteLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
+        Console.WriteLine("{0}: {1}", nameof(VersionComparison), versioning.Comparer);
 
         var packageConfigPath = Path.Combine(o.RootDirectory, s_DirPackageProps);
 
@@ -46,7 +50,7 @@ public class PackageConverter
         if (!o.Force && !o.DryRun)
         {
             Console.WriteLine("WARNING: You are about to make changes to the following project files:");
-            projects.ForEach(p => Console.WriteLine($" {p.Name}"));
+            projects.ForEach(p => Console.WriteLine(" {0}", p.Name));
             Console.WriteLine("Are you sure you want to continue? [y/n]");
             if (Console.ReadKey().Key != ConsoleKey.Y)
             {
@@ -63,7 +67,7 @@ public class PackageConverter
 
             if (!o.DryRun)
             {
-                Console.WriteLine($"Deleting {packageConfigPath}...");
+                Console.WriteLine("Deleting {0}...", packageConfigPath);
                 File.Delete(packageConfigPath);
             }
         }
@@ -74,7 +78,7 @@ public class PackageConverter
                 ReadDirectoryPackagePropsFile(packageConfigPath);
             }
 
-            projects.ForEach(proj => ConvertProject(proj, o.DryRun, encoding, linewrap));
+            projects.ForEach(proj => ConvertProject(proj, o.DryRun, encoding, linewrap, versioning));
 
             if (this.referencesByConditionThenName.Any())
             {
@@ -127,7 +131,7 @@ public class PackageConverter
             }
             else
             {
-                Console.WriteLine( $"Package reference does not have parent. Skipping..." );
+                Console.WriteLine( "Package reference does not have parent. Skipping..." );
             }
         }
 
@@ -150,20 +154,21 @@ public class PackageConverter
         
         foreach (var packageVersion in packageVersions)
         {
-            var package = GetAttributeValue(packageVersion, "Include");
-            var version = GetAttributeValue(packageVersion, "Version");
+            var package = GetAttributeValue(packageVersion, "Include") ??
+                          throw new InvalidOperationException("PackageVersion element has no Include");
+            var version = SemanticVersion.Parse(GetAttributeValue(packageVersion, "Version"));
             var condition = GetAttributeValue(packageVersion.Parent, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
             {
-                packagesByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                packagesByName = new Dictionary<string, SemanticVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = packagesByName;
             }
         
             packagesByName[package] = version;
         }
         
-        Console.WriteLine($"Read {this.referencesByConditionThenName.Count} references from {packageConfigPath}");
+        Console.WriteLine("Read {0} references from {1}", this.referencesByConditionThenName.Count, packageConfigPath);
     }
 
     /// <summary>
@@ -181,20 +186,17 @@ public class PackageConverter
             "  </PropertyGroup>"
         };
 
-        foreach (var condition in this.referencesByConditionThenName.Keys)
+        foreach (var byConditionNames in this.referencesByConditionThenName)
         {
-            if (string.IsNullOrEmpty(condition))
-            {
-                lines.Add("  <ItemGroup>");    
-            }
-            else
-            {
-                lines.Add($"  <ItemGroup Condition=\"{condition}\">");
-            }
+            var condition = byConditionNames.Key;
+            var referencesByName= byConditionNames.Value;
+            lines.Add(string.IsNullOrEmpty(condition)
+                ? "  <ItemGroup>" 
+                : $"  <ItemGroup Condition=\"{condition}\">");
 
-            foreach (var packageAndVersion in this.referencesByConditionThenName[condition].OrderBy(x => x.Key))
+            foreach (var packageAndVersion in referencesByName.OrderBy(x => x.Key))
             {
-                lines.Add($"    <PackageVersion Include=\"{packageAndVersion.Key}\" Version=\"{packageAndVersion.Value}\" />");
+                lines.Add($"    <PackageVersion Include=\"{packageAndVersion.Key}\" Version=\"{packageAndVersion.Value.ToFullString()}\" />");
             }
             lines.Add("  </ItemGroup>");
         }
@@ -262,9 +264,9 @@ public class PackageConverter
     /// <summary>
     /// Converts a csproj to Centrally managed packaging.
     /// </summary>
-    private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap)
+    private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap, Versioning versioning)
     {
-        Console.WriteLine($"Processing references for {csprojFile.FullName}...");
+        Console.WriteLine("Processing references for {0}...", csprojFile.FullName);
 
         var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
 
@@ -288,18 +290,34 @@ public class PackageConverter
             if (string.IsNullOrEmpty(package))
                 continue;
 
-            var version = GetAttributeValue(packageReference, "Version");
+            var versionString = GetAttributeValue(packageReference, "Version");
+            var version = default(SemanticVersion?);
+            if (SemanticVersion.TryParse(versionString, out var parsedVersion))
+            {
+                version = parsedVersion;
+            }
+            else if (versionString != null)
+            {
+                Console.WriteLine("Can't parse Version attribute '{0}' in '{1}'", versionString, packageReference);
+            }
             RemoveAttributes(packageReference, "Version");
 
-            if (string.IsNullOrEmpty(version))
+            if (version is null)
             {
                 var versionElement = packageReference.Descendants().FirstOrDefault();
                 if (versionElement == null)
                 {
                     continue;
                 }
-                
-                version = versionElement.Value;
+
+                if (SemanticVersion.TryParse(versionElement.Value, out parsedVersion))
+                {
+                    version = parsedVersion;
+                }
+                else if (string.IsNullOrEmpty(versionElement.Value))
+                {
+                    Console.WriteLine("Can't parse <Version... /> element value '{0}' in '{1}'", versionElement.Value, packageReference);
+                }
                 if (versionElement.PreviousNode is XText textNode)
                 {
                     textNode.Remove();
@@ -323,19 +341,28 @@ public class PackageConverter
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var referencesForCondition))
             {
-                referencesForCondition = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                referencesForCondition = new Dictionary<string, SemanticVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = referencesForCondition;
             }
 
             if (referencesForCondition.TryGetValue(package, out var existing))
             {
                 // Existing reference for this package of same or greater version, so skip
-                if (version.CompareTo(existing) >= 0)
+                if (versioning.PreferExisting(existing, version))
+                {
                     continue;
+                }
             }
 
-            Console.WriteLine($" Found new reference: {package} {version} with Condition {condition}");
-            referencesForCondition[package] = version;
+            if (!versioning.IgnorePackageVersion(version))
+            {
+                Console.WriteLine(" Found new reference: {0} {1} with Condition {2}", package, version.ToFullString(), condition);
+                referencesForCondition[package] = version;
+            }
+            else
+            {
+                Console.WriteLine("Ignoring {0} version {1} with condition {2}.", packageReference, version?.ToFullString(), condition);
+            }
         }
 
         foreach (var reference in referencesToRemove)

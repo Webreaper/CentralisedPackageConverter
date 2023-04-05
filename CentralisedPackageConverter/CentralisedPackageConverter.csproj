@@ -20,5 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="NuGet.Versioning" Version="6.5.0" />
   </ItemGroup>
 </Project>
