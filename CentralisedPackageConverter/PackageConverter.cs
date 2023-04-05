@@ -1,4 +1,6 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml;
 using System.Xml.Linq;
 using NuGet.Versioning;
 
@@ -6,16 +8,12 @@ namespace CentralisedPackageConverter;
 
 public class PackageConverter
 {
-    private readonly Dictionary<string, Dictionary<string, SemanticVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, NuGetVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
-    private static readonly HashSet<string> s_extensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".csproj",
-        ".vbproj",
-        ".props",
-        ".targets"
-    };
+    internal static readonly Regex FileExtensionsRegex =
+        new Regex("\\.csproj$|\\.vbproj$|\\.props$|\\.targets$",
+            RegexOptions.RightToLeft | RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public void ProcessConversion(CommandLineOptions o)
     {
@@ -28,10 +26,11 @@ public class PackageConverter
         var encoding = Formatting.GetCommonEncoding(o.EncodingWebName);
         var linewrap = Formatting.GetLineWrap(o.LineWrap);
         var versioning = new Versioning(o.PickMinVersion, o.IgnorePrerelease, o.VersionComparison);
+        var directoryCrawler = new DirectoryCrawler(o.ExcludeDirectoriesRegexString, FileExtensionsRegex);
 
         Console.WriteLine("Writing files with encoding: {0}", encoding.WebName);
         Console.WriteLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
-        Console.WriteLine("{0}: {1}", nameof(VersionComparison), versioning.Comparer);
+        Console.WriteLine("{0}: {1}", nameof(VersionComparer), versioning.Comparer);
 
         var packageConfigPath = Path.Combine(o.RootDirectory, s_DirPackageProps);
 
@@ -41,8 +40,7 @@ public class PackageConverter
         var rootDir = new DirectoryInfo(o.RootDirectory);
 
         // Find all the csproj files to process
-        var projects = rootDir.GetFiles("*.*", SearchOption.AllDirectories)
-                              .Where(x => s_extensions.Contains(x.Extension))
+        var projects = directoryCrawler.EnumerateRelevantFiles(rootDir, SearchOption.AllDirectories)
                               .Where(x => !x.Name.Equals(s_DirPackageProps))
                               .OrderBy(x => x.Name)
                               .ToList();
@@ -156,12 +154,12 @@ public class PackageConverter
         {
             var package = GetAttributeValue(packageVersion, "Include") ??
                           throw new InvalidOperationException("PackageVersion element has no Include");
-            var version = SemanticVersion.Parse(GetAttributeValue(packageVersion, "Version"));
+            var version = NuGetVersion.Parse(GetAttributeValue(packageVersion, "Version"));
             var condition = GetAttributeValue(packageVersion.Parent, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
             {
-                packagesByName = new Dictionary<string, SemanticVersion>(StringComparer.OrdinalIgnoreCase);
+                packagesByName = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = packagesByName;
             }
         
@@ -291,8 +289,8 @@ public class PackageConverter
                 continue;
 
             var versionString = GetAttributeValue(packageReference, "Version");
-            var version = default(SemanticVersion?);
-            if (SemanticVersion.TryParse(versionString, out var parsedVersion))
+            var version = default(NuGetVersion?);
+            if (NuGetVersion.TryParse(versionString, out var parsedVersion))
             {
                 version = parsedVersion;
             }
@@ -310,7 +308,7 @@ public class PackageConverter
                     continue;
                 }
 
-                if (SemanticVersion.TryParse(versionElement.Value, out parsedVersion))
+                if (NuGetVersion.TryParse(versionElement.Value, out parsedVersion))
                 {
                     version = parsedVersion;
                 }
@@ -341,7 +339,7 @@ public class PackageConverter
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var referencesForCondition))
             {
-                referencesForCondition = new Dictionary<string, SemanticVersion>(StringComparer.OrdinalIgnoreCase);
+                referencesForCondition = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = referencesForCondition;
             }
 

@@ -151,7 +151,7 @@ public class VersioningTests : FileTestsBase
         foreach (var initialProjectContent in initialProjectContents)
         {
             counter++;
-            var directory = Path.Combine(this.SolutionFilePath, $"Test{counter}");
+            var directory = Path.Combine(this.TestDirectoryInfo.FullName, $"Test{counter}");
             Directory.CreateDirectory(directory);
             var filePath = Path.Combine(directory, string.Format(ProjectFileTemplate, counter));
             _projectFilePaths.Add(filePath);

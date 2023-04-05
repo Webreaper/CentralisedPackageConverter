@@ -22,7 +22,7 @@ public class Versioning
     /// Don't consider the version for PackageVersion setting.
     /// True if null or has parts not supported by <see cref="Comparer"/>.
     /// </summary>
-    public bool IgnorePackageVersion([NotNullWhen(false)]SemanticVersion? version)
+    public bool IgnorePackageVersion([NotNullWhen(false)]NuGetVersion? version)
     {
         if (version == null)
         {
@@ -40,7 +40,7 @@ public class Versioning
     /// <param name="existingVersion"></param>
     /// <param name="nextVersion"></param>
     /// <returns></returns>
-    public bool PreferExisting(SemanticVersion existingVersion, SemanticVersion? nextVersion)
+    public bool PreferExisting(NuGetVersion existingVersion, NuGetVersion? nextVersion)
     {
         if (nextVersion == null)
         {

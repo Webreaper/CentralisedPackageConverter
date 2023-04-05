@@ -5,13 +5,16 @@ namespace CentralisedPackageConverter;
 
 public class CommandLineOptions
 {
-    [Value(0, MetaName = "Root Directory", HelpText = "Root folder to scan for csproj files.", Required = true)]
+    internal const string DefaultExcludeDirectories = "^\\.|^bin$|^obj$";
+
+
+    [Value(0, MetaName = "Root Directory", HelpText = "Root folder to scan for .csproj files.", Required = true)]
     public string RootDirectory { get; set; } = string.Empty;
 
     [Option('r', "revert", HelpText = "Revert from Centralised Package Management to csproj-based versions.")]
     public bool Revert { get; set; }
 
-    [Option('d', "dry-run", HelpText = "Read-only mode (make no changes on disk.")]
+    [Option('d', "dry-run", HelpText = "Read-only mode (make no changes on disk).")]
     public bool DryRun { get; set; }
 
     [Option('f', HelpText = "Force changes (don't prompt/check for permission before continuing).")]
@@ -40,4 +43,8 @@ public class CommandLineOptions
             $"{nameof(VersionComparison.Default)}, {nameof(VersionComparison.Version)}, " + 
             $"{nameof(VersionComparison.VersionRelease)}, {nameof(VersionComparison.VersionReleaseMetadata)}")]
     public VersionComparison VersionComparison { get; set; }
+
+    [Option('x', "exclude-dirs", Default = DefaultExcludeDirectories,
+        HelpText = "Exclude directories matching this regular expression (not search pattern!)")]
+    public string ExcludeDirectoriesRegexString { get; set; } = DefaultExcludeDirectories;
 };

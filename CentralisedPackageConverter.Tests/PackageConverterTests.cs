@@ -420,6 +420,88 @@ public class PackageConverterTests : FileTestsBase
     }
 
 
+    [Test]
+    public void FloatingVersionsDontWork()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""[2.0.0,]"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""3.0.*"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""(4.0.0,4.0.99]"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+        var expectedPackageContent =
+            @"<Project>" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>" + LineWrap +
+            @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap + // =true
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>" + LineWrap;
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent);
+    }
+
+
+    [Test]
+    public void PreserveCommentsCdataWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <!-- XML Comment to test if it is preserved. -->" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <Description><![CDATA[Wrapped CDATA:" + LineWrap + "To demonstrate preservation.]]></Description>" + LineWrap +
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <!-- XML Comment to test if it is preserved. -->" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <Description><![CDATA[Wrapped CDATA:" + LineWrap + "To demonstrate preservation.]]></Description>" + LineWrap +
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+        var expectedPackageContent =
+            @"<Project>" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>" + LineWrap +
+            @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap + // =true
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>" + LineWrap;
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent);
+    }
+
+
     // TODO these could all be cleaner if the tests were just files on disk
     // something like this generator https://github.com/belav/csharpier/tree/master/Src/CSharpier.Tests.Generators
     // to create the tests that copying files to a temp directory out of the folder structure in here
