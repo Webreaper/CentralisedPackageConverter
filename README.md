@@ -52,6 +52,14 @@ Central Package Management CPM does not support floating versions, such as wildc
 
 Omitted digits will be implicitly added: *"8" == "8.0" == "8.0.0"*. 
 
+### Incomplete or invalid packages file
+
+The *Directory.Packages.props* file may be invalid or incomplete:
+* if the versions found in projects are missing, invalid (e.g. floating) or ignored (e.g. prerelease).
+* if conditions on *ItemGroup* depend on the project file.
+
+In these cases, manual edits or version selection will be necessary.
+
 ## Credits
 
 Thanks to [Thomas Ardal](https://github.com/ThomasArdal) for the suggestion and pointers to get this pushed as a dotnet global command. 
