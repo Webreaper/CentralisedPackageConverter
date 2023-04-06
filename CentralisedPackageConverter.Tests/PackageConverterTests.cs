@@ -346,7 +346,7 @@ public class PackageConverterTests : FileTestsBase
         var defaultEncodingProjectBinary = defaultBom
             .Concat(Encoding.Default.GetBytes(expectedProjectContent))
             .ToArray();
-        var writtenEncodingProjectBinary = File.ReadAllBytes(SolutionFilePath);
+        var writtenEncodingProjectBinary = File.ReadAllBytes(ProjectFilePath);
         AssertAreBinariesEqual(defaultEncodingProjectBinary, writtenEncodingProjectBinary, "Same encodings for project file?");
 
         var defaultEncodingPackagesBinary = defaultBom
@@ -404,7 +404,7 @@ public class PackageConverterTests : FileTestsBase
         var customEncodingProjectBinary = customBom
             .Concat(CustomEncoding.GetBytes(expectedProjectContent))
             .ToArray();
-        var projectFileBinary = File.ReadAllBytes(SolutionFilePath);
+        var projectFileBinary = File.ReadAllBytes(ProjectFilePath);
         AssertAreBinariesNotEqual(defaultEncodingProjectBinary, projectFileBinary, "Different encodings for project file?");
         AssertAreBinariesEqual(customEncodingProjectBinary, projectFileBinary, "Is project file binary expected custom encoding binary?");
 
@@ -516,7 +516,7 @@ public class PackageConverterTests : FileTestsBase
     )
     {
         var packageConverter = new PackageConverter();
-        WriteAllText(this.SolutionFilePath, initialProjectContent, encodingWebName);
+        WriteAllText(this.ProjectFilePath, initialProjectContent, encodingWebName);
 
         var options = new CommandLineOptions
         {
@@ -528,7 +528,7 @@ public class PackageConverterTests : FileTestsBase
         };
         packageConverter.ProcessConversion(options);
 
-        var newCsProjContent = ReadAllText(this.SolutionFilePath, encodingWebName);
+        var newCsProjContent = ReadAllText(this.ProjectFilePath, encodingWebName);
         newCsProjContent.Should().Be(expectedProjectContent);
         var packagesContent = ReadAllText(this.PackagesFilePath, encodingWebName);
         packagesContent.Should().Be(expectedPackageContent);
@@ -654,7 +654,7 @@ public class PackageConverterTests : FileTestsBase
     )
     {
         var packageConverter = new PackageConverter();
-        WriteAllText(SolutionFilePath, initialProjectContent, encodingWebName);
+        WriteAllText(ProjectFilePath, initialProjectContent, encodingWebName);
         WriteAllText(PackagesFilePath, initialPackageContent, encodingWebName);
 
         var options = new CommandLineOptions
@@ -667,7 +667,7 @@ public class PackageConverterTests : FileTestsBase
         };
         packageConverter.ProcessConversion(options);
 
-        var newCsProjContent = ReadAllText(SolutionFilePath, encodingWebName);
+        var newCsProjContent = ReadAllText(ProjectFilePath, encodingWebName);
         newCsProjContent.Should().Be(expectedProjectContent);
         File.Exists(PackagesFilePath).Should().BeFalse();
     }

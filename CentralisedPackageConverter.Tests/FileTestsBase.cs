@@ -17,12 +17,18 @@ public abstract class FileTestsBase
 
     private string? _projectFilePath;
 
-    protected string SolutionFilePath => _projectFilePath ??
+    /// <summary>
+    /// Default project file in test root directory.
+    /// </summary>
+    protected string ProjectFilePath => _projectFilePath ??
                                         throw new InvalidOperationException(
                                             $"Backing field {nameof(_projectFilePath)} has not been initialized with value.");
 
     private string? _packagesFilePath;
 
+    /// <summary>
+    /// Directory.Packages.props file path, in test root directory.
+    /// </summary>
     protected string PackagesFilePath => _packagesFilePath ??
                                          throw new InvalidOperationException(
                                              $"Backing field {nameof(_packagesFilePath)} has not been initialized with value.");
