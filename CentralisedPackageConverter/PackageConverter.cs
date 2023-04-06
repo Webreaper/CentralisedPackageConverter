@@ -30,7 +30,7 @@ public class PackageConverter
 
         Console.WriteLine("Writing files with encoding: {0}", encoding.WebName);
         Console.WriteLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
-        Console.WriteLine("{0}: {1}", nameof(VersionComparer), versioning.Comparer);
+        Console.WriteLine("{0}: {1}", nameof(VersionComparison), o.VersionComparison);
 
         var packageConfigPath = Path.Combine(o.RootDirectory, s_DirPackageProps);
 
