@@ -35,8 +35,8 @@ from the `csproj` file, and write the entries to the `Directory.Packages.props` 
 
 * Root Directory : Root folder to scan for csproj files. Required.
 * `-r`, `--revert` : Revert from Centralised Package Management to csproj-based versions.
-* `-d`, `--dry-run` : Read-only mode (make no changes on disk.
-* `-f` : Force changes (don`t prompt/check for permission before continuing).
+* `-d`, `--dry-run` : Read-only mode (make no changes on disk).
+* `-f` : Force changes (don't prompt/check for permission before continuing).
 * `-m` : Merge changes with existing directory file.
 * `-t`, `--transitive-pinning` : Force versions on transitive dependencies (CentralPackageTransitivePinningEnabled=true).
 * `-e`, `--encoding` : Encoding of written files, IANA web name (e.g. `utf-8`, `utf-16`). Default is picked by .NET implementation.
