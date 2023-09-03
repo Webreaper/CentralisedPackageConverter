@@ -1,16 +1,11 @@
+using FluentAssertions;
 using System.Text;
 
 namespace CentralisedPackageConverter.Tests;
 
-using FluentAssertions;
 
-public class PackageConverterTests
+public class PackageConverterTests : FileTestsBase
 {
-    private const string ProjectFile = "Test.csproj";
-    private const string PackagesConfigFile = "Directory.Packages.props";
-
-    private static readonly string LineWrap = Environment.NewLine;
-
     private static readonly string CustomLineWrap = 
         LineWrap == "\r\n" ? "\n" : "\r\n";
 
@@ -19,46 +14,13 @@ public class PackageConverterTests
     /// </summary>
     private static readonly Encoding CustomEncoding = Encoding.UTF32;
 
-    private DirectoryInfo? _testDirectoryInfo;
-
-    private DirectoryInfo TestDirectoryInfo => _testDirectoryInfo ??
-                                               throw new InvalidOperationException(
-                                                   $"Backing field {nameof(_testDirectoryInfo)} has not been initialized with value.");
-
-    private string? _projectFilePath;
-
-    private string ProjectFilePath => _projectFilePath ??
-                                      throw new InvalidOperationException(
-                                          $"Backing field {nameof(_projectFilePath)} has not been initialized with value.");
-
-    private string? _packagesFilePath;
-
-    private string PackagesFilePath => _packagesFilePath ??
-                                       throw new InvalidOperationException(
-                                           $"Backing field {nameof(_packagesFilePath)} has not been initialized with value.");
 
     [SetUp]
-    public void SetUp()
+    protected void SetUp()
     {
-        // TODO check if it supports linux correctly (should do, temp folder likely not hard drive)
-        // TODO setup a github action
-
-        var testTimestampBuilder = new StringBuilder(DateTime.Now.ToString("s"))
-            .Replace("-", string.Empty)
-            .Replace(":", string.Empty);
-        var currentTestDirPrefix = "CentralisedPackageConverter_" + 
-                                   TestContext.CurrentContext.Test.ClassName + "_" +
-                                   TestContext.CurrentContext.Test.Name + "_" +
-                                   testTimestampBuilder + "_";
-        _testDirectoryInfo = Directory.CreateTempSubdirectory(currentTestDirPrefix);
-        foreach (var directoryInfo in TestDirectoryInfo.EnumerateDirectories())
-        {
-            directoryInfo.Delete(true);
-        }
-
-        _projectFilePath = Path.Combine(TestDirectoryInfo.FullName, ProjectFile);
-        _packagesFilePath = Path.Combine(TestDirectoryInfo.FullName, PackagesConfigFile);
+        InitTestFileSettings();
     }
+
 
     [Test]
     public void BasicPackageWorks()
@@ -458,6 +420,88 @@ public class PackageConverterTests
     }
 
 
+    [Test]
+    public void FloatingVersionsDontWork()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""[2.0.0,]"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""3.0.*"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""(4.0.0,4.0.99]"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+        var expectedPackageContent =
+            @"<Project>" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>" + LineWrap +
+            @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap + // =true
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>" + LineWrap;
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent);
+    }
+
+
+    [Test]
+    public void PreserveCommentsCdataWorks()
+    {
+        var initialProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <!-- XML Comment to test if it is preserved. -->" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <Description><![CDATA[Wrapped CDATA:" + LineWrap + "To demonstrate preservation.]]></Description>" + LineWrap +
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+
+        var expectedProjectContent =
+            @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+            @"  <!-- XML Comment to test if it is preserved. -->" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <Description><![CDATA[Wrapped CDATA:" + LineWrap + "To demonstrate preservation.]]></Description>" + LineWrap +
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>";
+        var expectedPackageContent =
+            @"<Project>" + LineWrap +
+            @"  <PropertyGroup>" + LineWrap +
+            @"    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>" + LineWrap +
+            @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap + // =true
+            @"  </PropertyGroup>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage"" Version=""1.0.0"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>" + LineWrap;
+
+        TestWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            expectedPackageContent);
+    }
+
+
     // TODO these could all be cleaner if the tests were just files on disk
     // something like this generator https://github.com/belav/csharpier/tree/master/Src/CSharpier.Tests.Generators
     // to create the tests that copying files to a temp directory out of the folder structure in here
@@ -628,33 +672,6 @@ public class PackageConverterTests
         File.Exists(PackagesFilePath).Should().BeFalse();
     }
 
-
-    /// <summary>
-    /// <see cref="File.ReadAllText(string, Encoding)"/> or
-    /// <see cref="File.ReadAllText(string)"/> if no encoding
-    /// </summary>
-    private static string ReadAllText(string path, string? encodingWebName)
-    {
-        return encodingWebName is null
-            ? File.ReadAllText(path)
-            : File.ReadAllText(path, Encoding.GetEncoding(encodingWebName));
-    }
-
-    /// <summary>
-    /// <see cref="File.WriteAllText(string, string?, Encoding)"/> or
-    /// <see cref="File.WriteAllText(string, string?)"/> if no encoding
-    /// </summary>
-    private static void WriteAllText(string path, string? contents, string? encodingWebName)
-    {
-        if (encodingWebName != null)
-        {
-            File.WriteAllText(path, contents, Encoding.GetEncoding(encodingWebName));
-        }
-        else
-        {
-            File.WriteAllText(path, contents);
-        }
-    }
 
     private static void AssertAreBinariesEqual(byte[] binary1, byte[] binary2, string? description)
     {

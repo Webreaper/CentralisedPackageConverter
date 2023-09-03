@@ -33,9 +33,32 @@ from the `csproj` file, and write the entries to the `Directory.Packages.props` 
 
 ## Command-line Options
 
-* `-d` will force the tool to run in 'dry run' mode, meaning no changes will be written to disk.
-* `-r` will reverse the conversion process - writing the versions back to the csproj files, and deleting the `Directory.Package.props` file.
-* `-y` will skip the "Are you sure you want to do this" prompt and make the changes regardless. Be careful!
+* Root Directory : Root folder to scan for csproj files. Required.
+* `-r`, `--revert` : Revert from Centralised Package Management to csproj-based versions.
+* `-d`, `--dry-run` : Read-only mode (make no changes on disk).
+* `-f` : Force changes (don't prompt/check for permission before continuing).
+* `-m` : Merge changes with existing directory file.
+* `-t`, `--transitive-pinning` : Force versions on transitive dependencies (CentralPackageTransitivePinningEnabled=true).
+* `-e`, `--encoding` : Encoding of written files, IANA web name (e.g. `utf-8`, `utf-16`). Default is picked by .NET implementation.
+* `-l`, `--linewrap` : Line wrap style: `lf`=Unix, `crlf`=Windows, `cr`=Mac. Default is system style.
+* `-v`, `--min-version` : Pick minimum instead of maximum package version number.
+* `-p`, `--ignore-prerelease` : Ignore prerelease versions.
+* `-c`, `--version-comparison` : Which NuGet version parts to consider: `Default`, `Version`, `VersionRelease`, `VersionReleaseMetadata` (enum `NuGet.Versioning.VersionComparison`).
+* `-x`, `--exclude-dirs`, (Default = `^\.|^bin$|^obj$`) Exclude directories matching this regular expression (not search pattern!).
+
+## Comments
+
+Central Package Management CPM does not support floating versions, such as wildcards or range operators. 
+
+Omitted digits will be implicitly added: *"8" == "8.0" == "8.0.0"*. 
+
+### Incomplete or invalid packages file
+
+The *Directory.Packages.props* file may be invalid or incomplete:
+* if the versions found in projects are missing, invalid (e.g. floating) or ignored (e.g. prerelease).
+* if conditions on *ItemGroup* depend on the project file.
+
+In these cases, manual edits or version selection will be necessary.
 
 ## Credits
 
