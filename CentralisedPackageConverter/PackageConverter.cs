@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 using System.Xml.Linq;
 
 namespace CentralisedPackageConverter;
@@ -9,14 +7,26 @@ public class PackageConverter
 {
     private readonly Dictionary<string, Dictionary<string, string>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
+    private const string s_FsProjExtension = ".fsproj";
+
+    private const string s_FsharpLegacyFrameworkCondition =
+        "$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net470'))";
 
     private static readonly HashSet<string> s_extensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".csproj",
         ".vbproj",
+        s_FsProjExtension,
         ".props",
         ".targets"
     };
+
+    private static readonly XElement s_fsharpCorePackageReference = XElement.Parse($"""
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="System.ValueTuple" Condition="{s_FsharpLegacyFrameworkCondition}" />
+  </ItemGroup>
+""", LoadOptions.PreserveWhitespace);
 
     public void ProcessConversion(CommandLineOptions o)
     {
@@ -106,7 +116,7 @@ public class PackageConverter
             if( packageReference.Parent is not null )
             {
                 var condition = GetAttributeValue( packageReference.Parent, "Condition" ) ?? string.Empty;
-                var package = GetAttributeValue( packageReference, "Include" );
+                var package = GetAttributeValue(packageReference, "Include") ?? string.Empty;
 
                 if( this.referencesByConditionThenName.TryGetValue( condition, out var packagesByName ) )
                 {
@@ -150,8 +160,8 @@ public class PackageConverter
         
         foreach (var packageVersion in packageVersions)
         {
-            var package = GetAttributeValue(packageVersion, "Include");
-            var version = GetAttributeValue(packageVersion, "Version");
+            var package = GetAttributeValue(packageVersion, "Include") ?? "";
+            var version = GetAttributeValue(packageVersion, "Version") ?? "";
             var condition = GetAttributeValue(packageVersion.Parent, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
@@ -262,11 +272,38 @@ public class PackageConverter
     /// <summary>
     /// Converts a csproj to Centrally managed packaging.
     /// </summary>
-    private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap)
+    private void ConvertProject(FileInfo projFile, bool dryRun, Encoding encoding, string lineWrap)
     {
-        Console.WriteLine($"Processing references for {csprojFile.FullName}...");
+        Console.WriteLine($"Processing references for {projFile.FullName}...");
 
-        var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
+        if (projFile.Extension == ".fsproj")
+        {
+            if (this.referencesByConditionThenName.TryGetValue("", out var referencesForCondition))
+            {
+                referencesForCondition.TryAdd("FSharp.Core", "$(FSCorePackageVersion)");
+            }
+            else
+            {
+                referencesForCondition =
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { {"FSharp.Core", "$(FSCorePackageVersion)"} };
+                this.referencesByConditionThenName[""] = referencesForCondition;
+            }
+
+            if (this.referencesByConditionThenName.TryGetValue(s_FsharpLegacyFrameworkCondition, out var condition))
+            {
+                condition.TryAdd("System.ValueTuple", "4.4.0");
+            }
+            else
+            {
+                condition =
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                        { {"System.ValueTuple", "4.4.0"} };
+                this.referencesByConditionThenName[s_FsharpLegacyFrameworkCondition] = condition;
+            }
+        }
+
+        var xml = XDocument.Load(projFile.FullName, LoadOptions.PreserveWhitespace);
 
         var packageReferences = GetDescendants(xml, "PackageReference");
 
@@ -330,7 +367,7 @@ public class PackageConverter
             if (referencesForCondition.TryGetValue(package, out var existing))
             {
                 // Existing reference for this package of same or greater version, so skip
-                if (version.CompareTo(existing) >= 0)
+                if (string.Compare(version, existing, StringComparison.Ordinal) >= 0)
                     continue;
             }
 
@@ -343,11 +380,16 @@ public class PackageConverter
             reference.Remove();
         }
 
+        if (projFile.Extension == ".fsproj")
+        {
+            xml.Root!.Add(s_fsharpCorePackageReference);
+        }
+
         if (needToWriteChanges && !dryRun)
         {
             // this keeps the <xml element from appearing on the first line
             var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
-            File.WriteAllText(csprojFile.FullName, xmlText, encoding);
+            File.WriteAllText(projFile.FullName, xmlText, encoding);
         }
     }
 }
