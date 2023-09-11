@@ -25,13 +25,13 @@ jobs:
       run: dotnet restore
 
     - name: Build win-x64
-      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime win-x64 --self-contained -o cent-pack-convert-win-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime win-x64 --self-contained -o cent-pack-convert-win-x64 /p:Runtimeidentifier=win-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
       
     - name: Build linux-x64
-      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime linux-x64 --self-contained -o cent-pack-convert-linux-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime linux-x64 --self-contained -o cent-pack-convert-linux-x64 /p:Runtimeidentifier=linux-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
       
     - name: Build osx-x64
-      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime osx-x64 --self-contained -o cent-pack-convert-osx-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish CentralisedPackageConverter.sln -c Release --runtime osx-x64 --self-contained -o cent-pack-convert-osx-x64 /p:Runtimeidentifier=osx-x64 /p:AssemblyVersion=1.0.${{ github.run_number }}
 
     - name: Pack .NET Core tool
       run: dotnet pack -c Release CentralisedPackageConverter.sln /p:Version=1.0.${{ github.run_number }}
