@@ -37,6 +37,13 @@ public class PackageConverter
         if (o.DryRun)
             Console.WriteLine("Dry run enabled - no changes will be made on disk.");
 
+        if (File.Exists(o.RootDirectory))
+        {
+            Console.WriteLine("Please specifiy a directory to scan instead of a file.");
+            Console.WriteLine("Aborting...");
+            return;
+        }
+
         var rootDir = new DirectoryInfo(o.RootDirectory);
 
         // Find all the csproj files to process
@@ -56,11 +63,11 @@ public class PackageConverter
                 return;
             }
         }
-        
+
         if (o.Revert)
         {
             ReadDirectoryPackagePropsFile(packageConfigPath);
-            
+
             projects.ForEach(proj => RevertProject(proj, o.DryRun, encoding, linewrap));
 
             if (!o.DryRun)
@@ -103,9 +110,9 @@ public class PackageConverter
 
         var needToWriteChanges = false;
 
-        foreach (var packageReference in packagesReferences )
+        foreach (var packageReference in packagesReferences)
         {
-            if( packageReference.Parent is not null )
+            if (packageReference.Parent is not null)
             {
                 var condition = GetAttributeValue( packageReference.Parent, "Condition" ) ?? string.Empty;
                 if (!TryGetAttributeValue(packageReference, "Include", out var package))
@@ -116,27 +123,27 @@ public class PackageConverter
                         continue;
                     }
                 }
-
-                if( this.referencesByConditionThenName.TryGetValue( condition, out var packagesByName ) )
+              
+                if (this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
                 {
-                    if( packagesByName.TryGetValue( package, out var version ) )
+                    if (packagesByName.TryGetValue(package, out var version))
                     {
-                        packageReference.SetAttributeValue( "Version", version );
+                        packageReference.SetAttributeValue("Version", version);
                         needToWriteChanges = true;
                     }
                     else
                     {
-                        Console.WriteLine( $"No version found in {s_DirPackageProps} file for {package}! Skipping..." );
+                        Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
                     }
                 }
                 else
                 {
-                    Console.WriteLine( $"No condition found in {s_DirPackageProps} file for {condition}! Skipping..." );
+                    Console.WriteLine($"No condition found in {s_DirPackageProps} file for {condition}! Skipping...");
                 }
             }
             else
             {
-                Console.WriteLine( "Package reference does not have parent. Skipping..." );
+                Console.WriteLine("Package reference does not have parent. Skipping...");
             }
         }
 
@@ -156,7 +163,7 @@ public class PackageConverter
         var xml = XDocument.Load(packageConfigPath);
 
         var packageVersions = GetDescendants(xml, "PackageVersion");
-        
+
         foreach (var packageVersion in packageVersions)
         {
             var package = GetAttributeValue(packageVersion, "Include") ??
@@ -169,10 +176,10 @@ public class PackageConverter
                 packagesByName = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = packagesByName;
             }
-        
+
             packagesByName[package] = version;
         }
-        
+
         Console.WriteLine("Read {0} references from {1}", this.referencesByConditionThenName.Count, packageConfigPath);
     }
 
@@ -194,9 +201,9 @@ public class PackageConverter
         foreach (var byConditionNames in this.referencesByConditionThenName)
         {
             var condition = byConditionNames.Key;
-            var referencesByName= byConditionNames.Value;
+            var referencesByName = byConditionNames.Value;
             lines.Add(string.IsNullOrEmpty(condition)
-                ? "  <ItemGroup>" 
+                ? "  <ItemGroup>"
                 : $"  <ItemGroup Condition=\"{condition}\">");
 
             foreach (var packageAndVersion in referencesByName.OrderBy(x => x.Key))
@@ -245,8 +252,8 @@ public class PackageConverter
     private static string? GetAttributeValue(XElement? elem, string name)
     {
         // Use case-insensitive attribute lookup
-        var attr = elem?.Attributes().FirstOrDefault( x => 
-            string.Equals( x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase ));
+        var attr = elem?.Attributes().FirstOrDefault(x =>
+            string.Equals(x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase));
 
         return attr?.Value;
     }
@@ -279,7 +286,7 @@ public class PackageConverter
             .Where(x => string.Equals(x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-            attr.Remove();
+        attr.Remove();
     }
 
     /// <summary>
@@ -349,7 +356,7 @@ public class PackageConverter
                     // TODO change to self closing?
                 }
             }
-            
+
             // If there is only an Update attribute left, and no child elements, then this node
             // isn't useful any more, so we can remove it entirely
             if (removeNodeIfEmpty && packageReference.Attributes().Count() == 1 && !packageReference.Elements().Any())
