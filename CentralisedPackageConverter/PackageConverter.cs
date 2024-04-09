@@ -114,9 +114,16 @@ public class PackageConverter
         {
             if (packageReference.Parent is not null)
             {
-                var condition = GetAttributeValue(packageReference.Parent, "Condition") ?? string.Empty;
-                var package = GetAttributeValue(packageReference, "Include");
-
+                var condition = GetAttributeValue( packageReference.Parent, "Condition" ) ?? string.Empty;
+                if (!TryGetAttributeValue(packageReference, "Include", out var package))
+                {
+                    if (!TryGetAttributeValue(packageReference, "Update", out package))
+                    {
+                        Console.WriteLine("Package reference has no Include or Update attribute. Skipping...");
+                        continue;
+                    }
+                }
+              
                 if (this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
                 {
                     if (packagesByName.TryGetValue(package, out var version))
@@ -249,6 +256,22 @@ public class PackageConverter
             string.Equals(x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase));
 
         return attr?.Value;
+    }
+
+    /// <summary>
+    /// Try to get an attribute value from an XML Element
+    /// </summary>
+    /// <param name="elem">XML element. If null, result is false.</param>
+    /// <param name="name">Attribute name, checked namespce- and case-insensitive (pick first)</param>
+    /// <param name="value">The attribute value.</param>
+    /// <returns>Boolean whether attribute was picked</returns>
+    private static bool TryGetAttributeValue(XElement? elem, string name, out string? value)
+    {
+        var attr = elem?.Attributes().FirstOrDefault(x =>
+            string.Equals(x.Name.LocalName, name, StringComparison.OrdinalIgnoreCase));
+
+        value = attr?.Value;
+        return value != null;
     }
 
     /// <summary>
