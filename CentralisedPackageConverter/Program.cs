@@ -9,11 +9,11 @@ try
 
         converter.ProcessConversion(o);
 
-        Console.WriteLine("Processing Complete.");
+        Output.InfoLine("Processing Complete.");
     });
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Startup exception: {ex}");
+    Output.ErrorLine($"Startup exception: {ex}");
 }
 
