@@ -22,14 +22,14 @@ public class Versioning
     /// Don't consider the version for PackageVersion setting.
     /// True if null or has parts not supported by <see cref="Comparer"/>.
     /// </summary>
-    public bool IgnorePackageVersion([NotNullWhen(false)]NuGetVersion? version)
+    public bool IgnorePackageVersion([NotNullWhen(false)]PackageVersion? version)
     {
         if (version == null)
         {
             return true;
         }
 
-        return IgnorePrerelease && version.IsPrerelease;
+        return IgnorePrerelease && version.NuGetVersion?.IsPrerelease == true;
     }
 
     /// <summary>
@@ -40,15 +40,18 @@ public class Versioning
     /// <param name="existingVersion"></param>
     /// <param name="nextVersion"></param>
     /// <returns></returns>
-    public bool PreferExisting(NuGetVersion existingVersion, NuGetVersion? nextVersion)
+    public bool PreferExisting(PackageVersion existingVersion, PackageVersion? nextVersion)
     {
+        if (existingVersion.IsVariable) return true;
         if (nextVersion == null)
         {
             return true;
         }
 
+        if (nextVersion.IsVariable) return false;
+
         return PickMinVersion
-            ? Comparer.Compare(existingVersion, nextVersion) <= 0
-            : Comparer.Compare(existingVersion, nextVersion) >= 0;
+            ? Comparer.Compare(existingVersion.NuGetVersion, nextVersion.NuGetVersion) <= 0
+            : Comparer.Compare(existingVersion.NuGetVersion, nextVersion.NuGetVersion) >= 0;
     }
 }

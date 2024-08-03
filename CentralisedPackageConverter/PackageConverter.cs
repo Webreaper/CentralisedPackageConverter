@@ -8,7 +8,7 @@ namespace CentralisedPackageConverter;
 
 public class PackageConverter
 {
-    private readonly Dictionary<string, Dictionary<string, NuGetVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, PackageVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
     internal static readonly Regex FileExtensionsRegex =
@@ -168,12 +168,16 @@ public class PackageConverter
         {
             var package = GetAttributeValue(packageVersion, "Include") ??
                           throw new InvalidOperationException("PackageVersion element has no Include");
-            var version = NuGetVersion.Parse(GetAttributeValue(packageVersion, "Version"));
+            string? versionAttributeValue = GetAttributeValue(packageVersion, "Version");
+            if (versionAttributeValue == null)
+                throw new InvalidOperationException("PackageVersion element has no Version attribute");
+
+            var version = PackageVersion.Parse(versionAttributeValue);
             var condition = GetAttributeValue(packageVersion.Parent, "Condition") ?? string.Empty;
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
             {
-                packagesByName = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
+                packagesByName = new Dictionary<string, PackageVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = packagesByName;
             }
 
@@ -319,8 +323,8 @@ public class PackageConverter
                 continue;
 
             var versionString = GetAttributeValue(packageReference, "Version");
-            var version = default(NuGetVersion?);
-            if (NuGetVersion.TryParse(versionString, out var parsedVersion))
+            var version = default(PackageVersion?);
+            if (PackageVersion.TryParse(versionString, out var parsedVersion))
             {
                 version = parsedVersion;
             }
@@ -338,7 +342,7 @@ public class PackageConverter
                     continue;
                 }
 
-                if (NuGetVersion.TryParse(versionElement.Value, out parsedVersion))
+                if (PackageVersion.TryParse(versionElement.Value, out parsedVersion))
                 {
                     version = parsedVersion;
                 }
@@ -369,7 +373,7 @@ public class PackageConverter
 
             if (!this.referencesByConditionThenName.TryGetValue(condition, out var referencesForCondition))
             {
-                referencesForCondition = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
+                referencesForCondition = new Dictionary<string, PackageVersion>(StringComparer.OrdinalIgnoreCase);
                 this.referencesByConditionThenName[condition] = referencesForCondition;
             }
 
