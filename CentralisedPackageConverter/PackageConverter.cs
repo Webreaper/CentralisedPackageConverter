@@ -1,8 +1,10 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using NuGet.Versioning;
+using Spectre.Console;
 
 namespace CentralisedPackageConverter;
 
@@ -19,7 +21,8 @@ public class PackageConverter
     {
         if (string.IsNullOrWhiteSpace(o.RootDirectory))
         {
-            Console.WriteLine("Root directory argument must not be empty.");
+            // This is never hit because of the CommandLineParser library marks it required.
+            Output.ErrorLine("[maroon]Root directory argument must not be empty.[/]");
             return;
         }
 
@@ -28,19 +31,21 @@ public class PackageConverter
         var versioning = new Versioning(o.PickMinVersion, o.IgnorePrerelease, o.VersionComparison);
         var directoryCrawler = new DirectoryCrawler(o.ExcludeDirectoriesRegexString, FileExtensionsRegex);
 
-        Console.WriteLine("Writing files with encoding: {0}", encoding.WebName);
-        Console.WriteLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
-        Console.WriteLine("{0}: {1}", nameof(VersionComparison), o.VersionComparison);
+        Output.TraceLine("Writing files with encoding: {0}", encoding.WebName);
+        Output.TraceLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
+        Output.TraceLine("{0}: {1}", nameof(VersionComparison), o.VersionComparison);
 
         var packageConfigPath = Path.Combine(o.RootDirectory, s_DirPackageProps);
 
         if (o.DryRun)
-            Console.WriteLine("Dry run enabled - no changes will be made on disk.");
+        {
+            Output.InfoLine("Dry run enabled - no changes will be made on disk.");
+        }
 
         if (File.Exists(o.RootDirectory))
         {
-            Console.WriteLine("Please specifiy a directory to scan instead of a file.");
-            Console.WriteLine("Aborting...");
+            Output.ErrorLine("Please specify a directory to scan instead of a file.");
+            Output.TraceLine("Aborting...");
             return;
         }
 
@@ -54,12 +59,12 @@ public class PackageConverter
 
         if (!o.Force && !o.DryRun)
         {
-            Console.WriteLine("WARNING: You are about to make changes to the following project files:");
-            projects.ForEach(p => Console.WriteLine(" {0}", p.Name));
-            Console.WriteLine("Are you sure you want to continue? [y/n]");
+            Output.WarningLine("WARNING: You are about to make changes to the following project files:");
+            projects.ForEach(p => AnsiConsole.MarkupLine(" {0}", p.Name));
+            Output.WarningLine("Are you sure you want to continue? [y/n]");
             if (Console.ReadKey().Key != ConsoleKey.Y)
             {
-                Console.WriteLine("Aborting...");
+                Output.TraceLine("Aborting...");
                 return;
             }
         }
@@ -72,7 +77,7 @@ public class PackageConverter
 
             if (!o.DryRun)
             {
-                Console.WriteLine("Deleting {0}...", packageConfigPath);
+                Output.InfoLine("Deleting {0}...", packageConfigPath);
                 File.Delete(packageConfigPath);
             }
         }
@@ -90,7 +95,9 @@ public class PackageConverter
                 WriteDirectoryPackagesConfig(packageConfigPath, o.DryRun, o.TransitivePinning, encoding, linewrap);
             }
             else
-                Console.WriteLine("No versioned references found in csproj files!");
+            {
+                Output.WarningLine("No versioned references found in csproj files!");
+            }
         }
     }
 
@@ -119,7 +126,7 @@ public class PackageConverter
                 {
                     if (!TryGetAttributeValue(packageReference, "Update", out package))
                     {
-                        Console.WriteLine("Package reference has no Include or Update attribute. Skipping...");
+                        Output.TraceLine("Package reference has no Include or Update attribute. Skipping...");
                         continue;
                     }
                 }
@@ -133,17 +140,17 @@ public class PackageConverter
                     }
                     else
                     {
-                        Console.WriteLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
+                        Output.TraceLine($"No version found in {s_DirPackageProps} file for {package}! Skipping...");
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"No condition found in {s_DirPackageProps} file for {condition}! Skipping...");
+                    Output.TraceLine($"No condition found in {s_DirPackageProps} file for {condition}! Skipping...");
                 }
             }
             else
             {
-                Console.WriteLine("Package reference does not have parent. Skipping...");
+                Output.TraceLine("Package reference does not have parent. Skipping...");
             }
         }
 
@@ -180,7 +187,7 @@ public class PackageConverter
             packagesByName[package] = version;
         }
 
-        Console.WriteLine("Read {0} references from {1}", this.referencesByConditionThenName.Count, packageConfigPath);
+        Output.InfoLine("Read {0} references from {1}", this.referencesByConditionThenName.Count, packageConfigPath);
     }
 
     /// <summary>
@@ -215,10 +222,10 @@ public class PackageConverter
 
         lines.Add("</Project>");
 
-        Console.WriteLine($"Writing {this.referencesByConditionThenName.Count} refs to {s_DirPackageProps} to {packageConfigPath}...");
+        Output.InfoLine($"Writing {this.referencesByConditionThenName.Count} refs to {s_DirPackageProps} to {packageConfigPath}...");
 
         if (dryRun)
-            lines.ForEach(x => Console.WriteLine(x));
+            lines.ForEach(x => Output.TraceLine(x));
         else
         {
             // if the file exists already (we are doing a merge with old file) - create a backup of the old file
@@ -294,7 +301,7 @@ public class PackageConverter
     /// </summary>
     private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap, Versioning versioning)
     {
-        Console.WriteLine("Processing references for {0}...", csprojFile.FullName);
+        Output.InfoLine("Processing references for [green]{0}[/]...", csprojFile.FullName);
 
         var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
 
@@ -326,7 +333,8 @@ public class PackageConverter
             }
             else if (versionString != null)
             {
-                Console.WriteLine("Can't parse Version attribute '{0}' in '{1}'", versionString, packageReference);
+                Output.WarningLine("Can't parse Version attribute '{0}' in '{1}'", 
+                    versionString, packageReference);
             }
             RemoveAttributes(packageReference, "Version");
 
@@ -344,7 +352,8 @@ public class PackageConverter
                 }
                 else if (string.IsNullOrEmpty(versionElement.Value))
                 {
-                    Console.WriteLine("Can't parse <Version... /> element value '{0}' in '{1}'", versionElement.Value, packageReference);
+                    Output.WarningLine("Can't parse <Version... /> element value '{0}' in '{1}'", 
+                        versionElement.Value, packageReference);
                 }
                 if (versionElement.PreviousNode is XText textNode)
                 {
@@ -384,12 +393,13 @@ public class PackageConverter
 
             if (!versioning.IgnorePackageVersion(version))
             {
-                Console.WriteLine(" Found new reference: {0} {1} with Condition {2}", package, version.ToFullString(), condition);
+                Output.InfoLine(" Found new reference: {0} {1} with Condition {2}",
+                    package, version.ToFullString(), condition);
                 referencesForCondition[package] = version;
             }
             else
             {
-                Console.WriteLine("Ignoring {0} version {1} with condition {2}.", packageReference, version?.ToFullString(), condition);
+                Output.TraceLine("Ignoring {0} version {1} with condition {2}.", packageReference, version?.ToFullString(), condition);
             }
         }
 
