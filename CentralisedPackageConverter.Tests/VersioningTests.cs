@@ -134,6 +134,21 @@ public class VersioningTests : FileTestsBase
     }
 
 
+    [Test]
+    public void TestVariableAsVersion()
+    {
+        var initialProjectContent =
+            @"<Project>" + LineWrap +
+            @"  <ItemGroup>" + LineWrap +
+            @"    <PackageReference Include=""TestPackage"" Version=""$(VersionVariable)"" />" + LineWrap +
+            @"  </ItemGroup>" + LineWrap +
+            @"</Project>" + LineWrap;
+
+        TestResultVersion([initialProjectContent], "$(VersionVariable)");
+        CheckProjectFilesHaveVersionsRemoved();
+    }
+
+
 
     // something like this generator https://github.com/belav/csharpier/tree/master/Src/CSharpier.Tests.Generators
     // to create the tests that copying files to a temp directory out of the folder structure in here
