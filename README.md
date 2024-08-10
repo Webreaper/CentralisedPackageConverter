@@ -62,4 +62,4 @@ In these cases, manual edits or version selection will be necessary.
 
 ## Credits
 
-Thanks to [Thomas Ardal](https://github.com/ThomasArdal) for the suggestion and pointers to get this pushed as a dotnet global command. 
+Thanks to [Thomas Ardal](https://github.com/ThomasArdal) for the suggestion and pointers to get this pushed as a dotnet global command. And thanks to all of the other contributors who have helped make this tool even better.
