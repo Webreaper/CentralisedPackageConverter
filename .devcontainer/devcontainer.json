@@ -1,0 +1,4 @@
+{
+	"name": "CentralisedPackageConverter",
+	"image": "mcr.microsoft.com/devcontainers/dotnet:8.0"
+}

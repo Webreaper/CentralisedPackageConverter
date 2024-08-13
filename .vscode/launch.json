@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/CentralisedPackageConverter/bin/Debug/net8.0/CentralisedPackageConverter.dll",
+            "cwd": "${workspaceFolder}/CentralisedPackageConverter",
+            "args": [
+                "--dry-run",
+                "${workspaceFolder}"
+            ]
+        }
+    ]
+}
