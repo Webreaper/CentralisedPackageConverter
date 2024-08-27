@@ -7,7 +7,7 @@ public class DirectoryCrawlerTests : FileTestsBase
 {
     private static readonly DirectoryCrawler DefaultDirectoryCrawler = new(
         new Regex(CommandLineOptions.DefaultExcludeDirectories),
-        PackageConverter.FileExtensionsRegex);
+        PackageConverter.AllowedFileExtensions);
 
     [SetUp]
     public void SetUp()
@@ -53,7 +53,7 @@ public class DirectoryCrawlerTests : FileTestsBase
 
         var filesExpectedFound = "Expected: " + LineWrap + string.Join(LineWrap, expectedFilePaths) + LineWrap +
                                  "Actual: " + LineWrap + string.Join(LineWrap, foundFilePaths);
-        foundFilePaths.Count.Should().Be(expectedFilePaths.Count, "Correct file count? " + LineWrap + 
+        foundFilePaths.Count.Should().Be(expectedFilePaths.Count, "Correct file count? " + LineWrap +
                                                                   filesExpectedFound + LineWrap);
         for (int j = 0; j < expectedFilePaths.Count; j++)
         {
@@ -89,7 +89,7 @@ public class DirectoryCrawlerTests : FileTestsBase
                 .Select(fi => fi.FullName).ToList();
 
         var filesExpectedFound = "Found: " + LineWrap + string.Join(LineWrap, foundFilePaths);
-        foundFilePaths.Count.Should().Be(0, "No files found in excluded directories? " + 
+        foundFilePaths.Count.Should().Be(0, "No files found in excluded directories? " +
                                             LineWrap + filesExpectedFound + LineWrap);
     }
 }

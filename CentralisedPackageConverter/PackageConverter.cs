@@ -13,9 +13,13 @@ public class PackageConverter
     private readonly Dictionary<string, Dictionary<string, PackageVersion>> referencesByConditionThenName = new(StringComparer.OrdinalIgnoreCase);
     private const string s_DirPackageProps = "Directory.Packages.props";
 
-    internal static readonly Regex FileExtensionsRegex =
-        new Regex("\\.csproj$|\\.vbproj$|\\.props$|\\.targets$",
-            RegexOptions.RightToLeft | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    internal static readonly HashSet<string> AllowedFileExtensions = new(StringComparer.OrdinalIgnoreCase) {
+        ".csproj",
+        ".vbproj",
+        ".fsproj",
+        ".props",
+        ".targets"
+    };
 
     public void ProcessConversion(CommandLineOptions o)
     {
@@ -29,7 +33,7 @@ public class PackageConverter
         var encoding = Formatting.GetCommonEncoding(o.EncodingWebName);
         var linewrap = Formatting.GetLineWrap(o.LineWrap);
         var versioning = new Versioning(o.PickMinVersion, o.IgnorePrerelease, o.VersionComparison);
-        var directoryCrawler = new DirectoryCrawler(o.ExcludeDirectoriesRegexString, FileExtensionsRegex);
+        var directoryCrawler = new DirectoryCrawler(o.ExcludeDirectoriesRegexString, AllowedFileExtensions);
 
         Output.TraceLine("Writing files with encoding: {0}", encoding.WebName);
         Output.TraceLine("Pick lowest version (not max): {0}", versioning.PickMinVersion);
@@ -51,7 +55,7 @@ public class PackageConverter
 
         var rootDir = new DirectoryInfo(o.RootDirectory);
 
-        // Find all the csproj files to process
+        // Find all the project files to process
         var projects = directoryCrawler.EnumerateRelevantFiles(rootDir, SearchOption.AllDirectories)
                               .Where(x => !x.Name.Equals(s_DirPackageProps))
                               .OrderBy(x => x.Name)
@@ -96,14 +100,14 @@ public class PackageConverter
             }
             else
             {
-                Output.WarningLine("No versioned references found in csproj files!");
+                Output.WarningLine("No versioned references found in project files!");
             }
         }
     }
 
     /// <summary>
     /// Revert a project to non-centralised package management
-    /// by adding the versions back into the csproj file.
+    /// by adding the versions back into the project file.
     /// </summary>
     /// <param name="project">Project file</param>
     /// <param name="dryRun">Test only</param>
@@ -121,7 +125,7 @@ public class PackageConverter
         {
             if (packageReference.Parent is not null)
             {
-                var condition = GetAttributeValue( packageReference.Parent, "Condition" ) ?? string.Empty;
+                var condition = GetAttributeValue(packageReference.Parent, "Condition") ?? string.Empty;
                 if (!TryGetAttributeValue(packageReference, "Include", out var package))
                 {
                     if (!TryGetAttributeValue(packageReference, "Update", out package))
@@ -130,7 +134,7 @@ public class PackageConverter
                         continue;
                     }
                 }
-              
+
                 if (this.referencesByConditionThenName.TryGetValue(condition, out var packagesByName))
                 {
                     if (packagesByName.TryGetValue(package, out var version))
@@ -301,13 +305,13 @@ public class PackageConverter
     }
 
     /// <summary>
-    /// Converts a csproj to Centrally managed packaging.
+    /// Converts a project file to Centrally managed packaging.
     /// </summary>
-    private void ConvertProject(FileInfo csprojFile, bool dryRun, Encoding encoding, string lineWrap, Versioning versioning)
+    private void ConvertProject(FileInfo projectFile, bool dryRun, Encoding encoding, string lineWrap, Versioning versioning)
     {
-        Output.InfoLine("Processing references for [green]{0}[/]...", csprojFile.FullName);
+        Output.InfoLine("Processing references for [green]{0}[/]...", projectFile.FullName);
 
-        var xml = XDocument.Load(csprojFile.FullName, LoadOptions.PreserveWhitespace);
+        var xml = XDocument.Load(projectFile.FullName, LoadOptions.PreserveWhitespace);
 
         var packageReferences = GetDescendants(xml, "PackageReference");
 
@@ -337,7 +341,7 @@ public class PackageConverter
             }
             else if (versionString != null)
             {
-                Output.WarningLine("Can't parse Version attribute '{0}' in '{1}'", 
+                Output.WarningLine("Can't parse Version attribute '{0}' in '{1}'",
                     versionString, packageReference);
             }
             RemoveAttributes(packageReference, "Version");
@@ -356,7 +360,7 @@ public class PackageConverter
                 }
                 else if (string.IsNullOrEmpty(versionElement.Value))
                 {
-                    Output.WarningLine("Can't parse <Version... /> element value '{0}' in '{1}'", 
+                    Output.WarningLine("Can't parse <Version... /> element value '{0}' in '{1}'",
                         versionElement.Value, packageReference);
                 }
                 if (versionElement.PreviousNode is XText textNode)
@@ -416,7 +420,7 @@ public class PackageConverter
         {
             // this keeps the <xml element from appearing on the first line
             var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
-            File.WriteAllText(csprojFile.FullName, xmlText, encoding);
+            File.WriteAllText(projectFile.FullName, xmlText, encoding);
         }
     }
 }
