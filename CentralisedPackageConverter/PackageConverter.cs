@@ -401,13 +401,28 @@ public class PackageConverter
 
             if (!versioning.IgnorePackageVersion(version))
             {
-                Output.InfoLine(" Found new reference: {0} {1} with Condition {2}",
-                    package, version.ToFullString(), condition);
+                if (condition != String.Empty)
+                {
+                    Output.InfoLine(" Found new reference: {0} {1} with Condition {2}",
+                        package, version.ToFullString(), condition);
+                }
+                else
+                {
+                    Output.InfoLine(" Found new reference: {0} {1}",
+                    package, version.ToFullString());
+                }
                 referencesForCondition[package] = version;
             }
             else
             {
-                Output.TraceLine("Ignoring {0} version {1} with condition {2}.", packageReference, version?.ToFullString(), condition);
+                if (condition != String.Empty)
+                {
+                    Output.TraceLine("Ignoring {0} version {1} with condition {2}.", package, version?.ToFullString(), condition);
+                }
+                else
+                {
+                    Output.TraceLine("Ignoring {0} version {1}.", package, version?.ToFullString());
+                }
             }
         }
 
