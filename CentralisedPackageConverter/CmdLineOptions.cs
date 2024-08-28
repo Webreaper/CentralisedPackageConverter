@@ -8,10 +8,10 @@ public class CommandLineOptions
     internal const string DefaultExcludeDirectories = "^\\.|^bin$|^obj$";
 
 
-    [Value(0, MetaName = "Root Directory", HelpText = "Root folder to scan for .csproj files.", Required = true)]
+    [Value(0, MetaName = "Root Directory", HelpText = "Root folder to scan for project files.", Required = true)]
     public string RootDirectory { get; set; } = string.Empty;
 
-    [Option('r', "revert", HelpText = "Revert from Centralised Package Management to csproj-based versions.")]
+    [Option('r', "revert", HelpText = "Revert from Centralised Package Management to project-file-based versions.")]
     public bool Revert { get; set; }
 
     [Option('d', "dry-run", HelpText = "Read-only mode (make no changes on disk).")]
@@ -29,7 +29,7 @@ public class CommandLineOptions
     [Option('e', "encoding", HelpText = "Encoding of written files, IANA web name (e.g. 'utf-8', 'utf-16'). Default is picked by .NET implementation.")]
     public string? EncodingWebName { get; set; }
 
-    [Option('l', "linewrap", HelpText = "Line wrap style: 'lf'=Unix, 'crlf'=Windows, 'cr'=Mac. Default is system style." )]
+    [Option('l', "linewrap", HelpText = "Line wrap style: 'lf'=Unix, 'crlf'=Windows, 'cr'=Mac. Default is system style.")]
     public string? LineWrap { get; set; }
 
     [Option('v', "min-version", HelpText = "Pick minimum instead of maximum package version number.")]
@@ -38,9 +38,9 @@ public class CommandLineOptions
     [Option('p', "ignore-prerelease", HelpText = "Ignore prerelease versions.")]
     public bool IgnorePrerelease { get; set; }
 
-    [Option('c', "version-comparison", 
+    [Option('c', "version-comparison",
         HelpText = $"Which NuGet version parts to consider (enum {nameof(VersionComparison)}): " +
-            $"{nameof(VersionComparison.Default)}, {nameof(VersionComparison.Version)}, " + 
+            $"{nameof(VersionComparison.Default)}, {nameof(VersionComparison.Version)}, " +
             $"{nameof(VersionComparison.VersionRelease)}, {nameof(VersionComparison.VersionReleaseMetadata)}")]
     public VersionComparison VersionComparison { get; set; }
 

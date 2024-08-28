@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
+﻿using System.IO.Enumeration;
 using System.Text.RegularExpressions;
 
 namespace CentralisedPackageConverter;
@@ -7,43 +6,36 @@ namespace CentralisedPackageConverter;
 public class DirectoryCrawler
 {
     public Regex ExcludesRegex { get; }
+    public HashSet<string> AllowedFileExtensions { get; }
 
-    public Regex FilesRegex { get; }
-
-
-    public DirectoryCrawler(string excludesRegexString, Regex filesRegex)
-    : this(new Regex(excludesRegexString), filesRegex)
+    public DirectoryCrawler(string excludesRegexString, HashSet<string> allowedFileExtensions)
+    : this(new Regex(excludesRegexString), allowedFileExtensions)
     {
 
     }
-    public DirectoryCrawler(Regex excludesRegex, Regex filesRegex)
+    public DirectoryCrawler(Regex excludesRegex, HashSet<string> allowedFileExtensions)
     {
         ExcludesRegex = excludesRegex;
-        FilesRegex = filesRegex;
+        AllowedFileExtensions = allowedFileExtensions;
     }
 
-    /// <summary>
-    /// Enumerate all directories not filtered out by <see cref="ExcludesRegex"/>,
-    /// including <paramref name="startDirectory"/>.
-    /// </summary>
-    public IEnumerable<DirectoryInfo> EnumerateRelevantDirectories(DirectoryInfo startDirectory)
-    {
-        yield return startDirectory;
-
-        foreach (var relevantDir in startDirectory.EnumerateDirectories()
-                     .Where(d => !ExcludesRegex.IsMatch(d.Name)))
-        {
-            foreach (var subdir in EnumerateRelevantDirectories(relevantDir))
-            {
-                yield return subdir;
-            }
-        }
-    }
 
     public IEnumerable<FileInfo> EnumerateRelevantFiles(DirectoryInfo directory, SearchOption searchOption)
     {
-        return searchOption == SearchOption.TopDirectoryOnly
-            ? directory.EnumerateFiles().Where(f => FilesRegex.IsMatch(f.Name))
-            : EnumerateRelevantDirectories(directory).SelectMany(d => EnumerateRelevantFiles(d, SearchOption.TopDirectoryOnly));
+        return new FileSystemEnumerable<FileInfo>(
+            directory: directory.FullName,
+            transform: (ref FileSystemEntry entry) => new FileInfo(entry.ToFullPath()),
+            options: new EnumerationOptions { RecurseSubdirectories = searchOption == SearchOption.AllDirectories }
+        )
+        {
+            ShouldIncludePredicate = (ref FileSystemEntry entry) =>
+            {
+                return !entry.IsDirectory && AllowedFileExtensions.Contains(Path.GetExtension(entry.FileName).ToString());
+            },
+            ShouldRecursePredicate = (ref FileSystemEntry entry) =>
+            {
+                return !ExcludesRegex.IsMatch(entry.FileName);
+            },
+        };
     }
 }
