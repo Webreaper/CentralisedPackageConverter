@@ -8,6 +8,14 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>central-pkg-converter</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
+    <Title>Centralised Package Management Converter</Title>
+    <Authors>Mark Otway &amp; Other Contributors</Authors>
+    <Description>Dotnet tool to convert large solutions to/from centralised package management</Description>
+    <PackageProjectUrl>https://github.com/Webreaper/CentralisedPackageConverter</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/Webreaper/CentralisedPackageConverter/blob/master/LICENCE/</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/Webreaper/CentralisedPackageConverter</RepositoryUrl>
+    <RepositoryType>Github</RepositoryType>
+    <PackageTags>Centralised, Package, Management, Migrator, Converter, CPM</PackageTags>
 </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
