@@ -9,7 +9,9 @@ To convert a large project to centralised package management, you need to:
 * Go through all of the project files and copy the references into the centralised `Directory.Packages.props` file
 * Remove all the versions from the package reference entries in the project files.
 
-This can be laborious for large projects, hence this tool. 
+This can be laborious for large projects, hence this tool.
+
+Centralised Package Converter supports both C# and F# projects.
 
 # How do I get it?
 
