@@ -8,7 +8,7 @@ namespace CentralisedPackageConverter;
 public static class Output
 {
     public static void InfoLine(string message) => InfoLine(message, Array.Empty<object>());
-    public static void InfoLine(string message, params object[] args) => AnsiConsole.MarkupLine(message, args);
+    public static void InfoLine(string message, params object[] args) => AnsiConsole.WriteLine(message, args);
 
     public static void ErrorLine(string message) => ErrorLine(message, Array.Empty<object>());
     public static void ErrorLine(string message, params object[] args) => AnsiConsole.MarkupLineInterpolated($"[red]{string.Format(message, args)}[/]");
