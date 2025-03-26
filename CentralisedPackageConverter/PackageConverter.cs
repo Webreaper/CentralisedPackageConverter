@@ -160,10 +160,17 @@ public class PackageConverter
 
         if (!dryRun && needToWriteChanges)
         {
-            var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
-            File.WriteAllText(project.FullName, xmlText, encoding);
-        }
-    }
+			using var writer = XmlWriter.Create(project.FullName, new XmlWriterSettings
+			{
+				OmitXmlDeclaration = xml.Declaration == null,
+				Indent = true,
+				NewLineChars = lineWrap,
+				NewLineHandling = NewLineHandling.Replace,
+				Encoding = encoding,
+			});
+			xml.Save(writer);
+		}
+	}
 
     /// <summary>
     /// Read the list of references and versions from the Directory.Package.props file.
@@ -433,9 +440,15 @@ public class PackageConverter
 
         if (needToWriteChanges && !dryRun)
         {
-            // this keeps the <xml element from appearing on the first line
-            var xmlText = Formatting.FormatLineWraps(xml.ToString(), lineWrap);
-            File.WriteAllText(projectFile.FullName, xmlText, encoding);
+			using var writer = XmlWriter.Create(projectFile.FullName, new XmlWriterSettings
+			{
+				OmitXmlDeclaration = xml.Declaration == null,
+				Indent = true,
+				NewLineChars = lineWrap,
+				NewLineHandling = NewLineHandling.Replace,
+				Encoding = encoding,
+			});
+			xml.Save(writer);
         }
     }
 }

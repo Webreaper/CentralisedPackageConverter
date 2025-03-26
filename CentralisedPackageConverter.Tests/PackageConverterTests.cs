@@ -56,7 +56,43 @@ public class PackageConverterTests : FileTestsBase
         );
     }
 
-    [Test]
+	[Test]
+	public void KeepXmlDeclaration()
+	{
+		var initialProjectContent =
+			@"<?xml version=""1.0"" encoding=""utf-8""?>" + LineWrap +
+			@"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+			@"  <ItemGroup>" + LineWrap +
+			@"    <PackageReference Include=""TestPackage"" Version=""1.2.3"" />" + LineWrap +
+			@"  </ItemGroup>" + LineWrap +
+			@"</Project>";
+
+		var expectedProjectContent =
+			@"<?xml version=""1.0"" encoding=""utf-8""?>" + LineWrap +
+			@"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
+			@"  <ItemGroup>" + LineWrap +
+			@"    <PackageReference Include=""TestPackage"" />" + LineWrap +
+			@"  </ItemGroup>" + LineWrap +
+			@"</Project>";
+		var expectedPackageContent =
+			@"<Project>" + LineWrap +
+			@"  <PropertyGroup>" + LineWrap +
+			@"    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>" + LineWrap +
+			@"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap +
+			@"  </PropertyGroup>" + LineWrap +
+			@"  <ItemGroup>" + LineWrap +
+			@"    <PackageVersion Include=""TestPackage"" Version=""1.2.3"" />" + LineWrap +
+			@"  </ItemGroup>" + LineWrap +
+			@"</Project>" + LineWrap;
+
+		TestWithSingleProject(
+			initialProjectContent,
+			expectedProjectContent,
+			expectedPackageContent
+		);
+	}
+
+	[Test]
     public void CaseInsensitiveVersionAttrWorks()
     {
         var initialProjectContent =
