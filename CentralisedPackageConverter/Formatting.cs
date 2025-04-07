@@ -51,18 +51,4 @@ public static class Formatting
         throw new InvalidOperationException("Invalid -l --linewrap option value. Possible are: " +
                                             string.Join(",", LineWrapOptions.Keys.Select(o => $"\"{o}\"")));
     }
-
-    /// <summary>
-    /// Set all line wraps in <paramref name="text"/> to <paramref name="lineWrap" />.
-    /// </summary>
-    /// <param name="text">Where to format line wraps.</param>
-    /// <param name="lineWrap">The line wrap character(s).</param>
-    public static string FormatLineWraps(string text, string lineWrap)
-    {
-        return new StringBuilder(text)
-            .Replace("\r\n", "\n")
-            .Replace("\r", "\n") // Normalize Windows, Mac to Unix, to get distinct, single char line wraps.
-            .Replace("\n", lineWrap) // replace normalized line wraps by requested.
-            .ToString();
-    }
 }
