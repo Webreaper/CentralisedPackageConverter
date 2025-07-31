@@ -350,14 +350,14 @@ public class PackageConverterTests : FileTestsBase
         var initialProjectContent =
             @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageReference Include=""TestPackage_äöüß"" Version=""1.2.3"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" Version=""1.2.3"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>";
 
         var expectedProjectContent =
             @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageReference Include=""TestPackage_äöüß"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>";
         var expectedPackageContent =
@@ -367,7 +367,7 @@ public class PackageConverterTests : FileTestsBase
             @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap +
             @"  </PropertyGroup>" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageVersion Include=""TestPackage_äöüß"" Version=""1.2.3"" />" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" Version=""1.2.3"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>" + LineWrap;
 
@@ -402,14 +402,14 @@ public class PackageConverterTests : FileTestsBase
         var initialProjectContent =
             @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageReference Include=""TestPackage_äöüß"" Version=""1.2.3"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" Version=""1.2.3"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>";
 
         var expectedProjectContent =
             @"<Project Sdk=""Microsoft.NET.Sdk"">" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageReference Include=""TestPackage_äöüß"" />" + LineWrap +
+            @"    <PackageReference Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>";
         var expectedPackageContent =
@@ -419,7 +419,7 @@ public class PackageConverterTests : FileTestsBase
             @"    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>" + LineWrap +
             @"  </PropertyGroup>" + LineWrap +
             @"  <ItemGroup>" + LineWrap +
-            @"    <PackageVersion Include=""TestPackage_äöüß"" Version=""1.2.3"" />" + LineWrap +
+            @"    <PackageVersion Include=""TestPackage_ï¿½ï¿½ï¿½ï¿½"" Version=""1.2.3"" />" + LineWrap +
             @"  </ItemGroup>" + LineWrap +
             @"</Project>" + LineWrap;
 
@@ -680,6 +680,46 @@ public class PackageConverterTests : FileTestsBase
         );
     }
 
+    [Test]
+    public void BasicRevertWithFixedVersionWorks()
+    {
+        const string initialProjectContent =
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="Test.Package" />
+              </ItemGroup>
+            </Project>
+            """;
+
+        const string initialPackageContent =
+            """
+            <Project>
+              <PropertyGroup>
+                <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+                <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageVersion Include="Test.Package" Version="[1.2.3-alpha.3]" />
+              </ItemGroup>
+            </Project>
+            """;
+
+        const string expectedProjectContent =
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="Test.Package" Version="[1.2.3-alpha.3]" />
+              </ItemGroup>
+            </Project>
+            """;
+
+        TestRevertWithSingleProject(
+            initialProjectContent,
+            expectedProjectContent,
+            initialPackageContent
+        );
+    }
 
     private void TestRevertWithSingleProject(
         string initialProjectContent,

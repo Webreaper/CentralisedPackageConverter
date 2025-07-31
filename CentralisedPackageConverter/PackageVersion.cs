@@ -1,9 +1,6 @@
 ﻿using NuGet.Versioning;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics.CodeAnalysis;
+
 
 namespace CentralisedPackageConverter
 {
@@ -14,6 +11,8 @@ namespace CentralisedPackageConverter
 
         public NuGetVersion? NuGetVersion { get; private set; }
 
+        [MemberNotNullWhen(true, nameof(NuGetVersion))]
+        public bool IsFixedVersion { get; private init; }
 
         public static PackageVersion Parse(string value)
         {
@@ -22,7 +21,7 @@ namespace CentralisedPackageConverter
 
             return version!;
         }
-        public static bool TryParse(string value, out PackageVersion? version)
+        public static bool TryParse(string? value, out PackageVersion? version)
         {
 
             if (value != null)
@@ -36,11 +35,24 @@ namespace CentralisedPackageConverter
                     return true;
                 }
 
+                var isFixed = false;
+
+                // Use a span to avoid additional string allocations and trim white space
+                var span = value.AsSpan().Trim();
+                
+                // Check if the value is surrounded by square brackets -> this indicates a fixed version
+                if (span.Length > 2 && span[0] == '[' && span[^1] == ']')
+                {
+                    value = span.Slice(1, span.Length - 2).ToString();
+                    isFixed = true;
+                }
+
                 if (NuGetVersion.TryParse(value, out var nugetVersion))
                 {
                     version = new PackageVersion
                     {
-                        NuGetVersion = nugetVersion
+                        NuGetVersion = nugetVersion,
+                        IsFixedVersion = isFixed
                     };
                     return true;
                 }
@@ -50,8 +62,11 @@ namespace CentralisedPackageConverter
         }
 
         public bool IsVariable => !string.IsNullOrWhiteSpace(VariableName);
-        public string ToFullString() => NuGetVersion?.ToFullString() ?? VariableName ?? string.Empty;
+        public string ToFullString() =>
+            IsFixedVersion ?
+                $"[{NuGetVersion.ToFullString()}]" :
+                NuGetVersion?.ToFullString() ?? VariableName ?? string.Empty;
 
-        public override string ToString() => NuGetVersion?.ToString() ?? VariableName ?? string.Empty;
+        public override string ToString() => ToFullString();
     }
 }
