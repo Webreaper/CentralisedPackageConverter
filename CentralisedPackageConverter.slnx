@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/SolutionItems/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="CentralisedPackageConverter.Tests/CentralisedPackageConverter.Tests.csproj" />
+  <Project Path="CentralisedPackageConverter/CentralisedPackageConverter.csproj" />
+</Solution>
